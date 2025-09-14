@@ -17,5 +17,15 @@
 	},
 	"observability": {
 		"enabled": true
+	},
+	"r2_buckets": [
+		{
+			"binding": "R2_STORAGE",
+			"bucket_name": "r2-drive-storage"
+		}
+	],
+	"vars": {
+		"ENABLE_AUTH": "true",
+		"ALLOWED_ORIGINS": "*"
 	}
 }
