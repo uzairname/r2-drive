@@ -7,7 +7,8 @@ import { R2SelectionInfo } from "./selection-info";
 import { Button } from "@workspace/ui/components/button";
 import { Upload, FolderPlus } from "lucide-react";
 import { UploadProgress, UploadProgressItem } from "@workspace/ui/components/upload-progress";
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
+import { CreateFolderDialog } from "./create-folder-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,6 +29,7 @@ export interface R2BucketNavigatorProps {
   handleUpload: (files: File[], currentPath: string[], onProgress?: (progress: UploadProgressItem) => void) => Promise<void>;
   handleDelete: (selectedItems: string[]) => Promise<void>;
   handleDownload: (selectedItems: string[]) => Promise<void>;
+  handleCreateFolder: (folderName: string) => Promise<{ success: boolean; error?: any }>;
   sortKey: "name" | "size" | "lastModified";
   sortDirection: "asc" | "desc";
   handleSort: (key: "name" | "size" | "lastModified") => void;
@@ -45,6 +47,7 @@ export function R2BucketNavigator({
   handleUpload,
   handleDelete,
   handleDownload,
+  handleCreateFolder,
   sortKey,
   sortDirection,
   handleSort,
@@ -55,6 +58,7 @@ export function R2BucketNavigator({
   const [isDownloading, setIsDownloading] = React.useState(false);
   const [uploadProgress, setUploadProgress] = React.useState<UploadProgressItem[]>([]);
   const [showUploadProgress, setShowUploadProgress] = React.useState(false);
+  const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
@@ -62,6 +66,10 @@ export function R2BucketNavigator({
 
   const handleUploadFolderClick = () => {
     folderInputRef.current?.click();
+  };
+
+  const handleCreateFolderClick = () => {
+    setShowCreateFolderDialog(true);
   };
 
   const handleProgressUpdate = (progress: UploadProgressItem) => {
@@ -147,66 +155,69 @@ export function R2BucketNavigator({
       </header>
       {/* Main Content */}
       <div className="flex-1 p-6">
-        <div className="flex items-center justify-between mb-6 h-10">
-          <R2Breadcrumbs path={path} onClick={onBreadcrumbClick} />
-          <div className="flex gap-2 items-center h-full">
-            <input
-              type="file"
-              ref={fileInputRef}
-              style={{ display: "none" }}
-              onChange={handleFileChange}
-              multiple
-            />
-            <input
-              type="file"
-              ref={folderInputRef}
-              style={{ display: "none" }}
-              onChange={handleFolderChange}
-              multiple
-              {...{ webkitdirectory: "" }}
-            />
-            
-            {/* Desktop: Show individual buttons */}
-            <div className="hidden md:flex gap-2">
-              <Button variant="outline" size="sm" className="h-8" onClick={handleUploadClick}>
-                <Upload className="h-4 w-4 mr-2" />
-                Upload File
-              </Button>
-              <Button variant="outline" size="sm" className="h-8" onClick={handleUploadFolderClick}>
-                <Upload className="h-4 w-4 mr-2" />
-                Upload Folder
-              </Button>
-              <Button variant="outline" size="sm" className="h-8">
-                <FolderPlus className="h-4 w-4 mr-2" />
-                Create Folder
-              </Button>
-            </div>
-
-            {/* Mobile: Show dropdown */}
-            <div className="md:hidden">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8">
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleUploadClick}>
-                    <Upload className="h-4 w-4 mr-2" />
-                    Upload File
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleUploadFolderClick}>
-                    <Upload className="h-4 w-4 mr-2" />
-                    Upload Folder
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <FolderPlus className="h-4 w-4 mr-2" />
-                    Create Folder
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+        {/* Upload Actions - moved above breadcrumbs */}
+        <div className="flex justify-end mb-4">
+          <input
+            type="file"
+            ref={fileInputRef}
+            style={{ display: "none" }}
+            onChange={handleFileChange}
+            multiple
+          />
+          <input
+            type="file"
+            ref={folderInputRef}
+            style={{ display: "none" }}
+            onChange={handleFolderChange}
+            multiple
+            {...{ webkitdirectory: "" }}
+          />
+          
+          {/* Desktop: Show individual buttons */}
+          <div className="hidden md:flex gap-2">
+            <Button variant="outline" size="sm" className="h-8" onClick={handleUploadClick}>
+              <Upload className="h-4 w-4 mr-2" />
+              Upload File
+            </Button>
+            <Button variant="outline" size="sm" className="h-8" onClick={handleUploadFolderClick}>
+              <Upload className="h-4 w-4 mr-2" />
+              Upload Folder
+            </Button>
+            <Button variant="outline" size="sm" className="h-8" onClick={handleCreateFolderClick}>
+              <FolderPlus className="h-4 w-4 mr-2" />
+              Create Folder
+            </Button>
           </div>
+
+          {/* Mobile: Show dropdown */}
+          <div className="md:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleUploadClick}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload File
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleUploadFolderClick}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload Folder
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleCreateFolderClick}>
+                  <FolderPlus className="h-4 w-4 mr-2" />
+                  Create Folder
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        {/* Breadcrumbs - now gets full width */}
+        <div className="mb-6">
+          <R2Breadcrumbs path={path} onClick={onBreadcrumbClick} />
         </div>
         <R2FileTable
           items={items}
@@ -234,6 +245,13 @@ export function R2BucketNavigator({
         uploads={uploadProgress}
         isVisible={showUploadProgress}
         onClose={() => setShowUploadProgress(false)}
+      />
+
+      {/* Create Folder Dialog */}
+      <CreateFolderDialog
+        open={showCreateFolderDialog}
+        onOpenChange={setShowCreateFolderDialog}
+        onCreateFolder={handleCreateFolder}
       />
     </div>
   );

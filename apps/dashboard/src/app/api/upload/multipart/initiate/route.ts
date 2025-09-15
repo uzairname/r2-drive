@@ -7,8 +7,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { key, contentType } = body as { key: string; contentType?: string };
     
-    if (!key) {
-      return NextResponse.json({ error: "Missing key parameter" }, { status: 400 });
+    if (!key || key.trim() === "") {
+      console.error("Missing or empty key parameter in request body:", { key });
+      return NextResponse.json({ error: "Missing or empty key parameter" }, { status: 400 });
     }
 
     const client = new R2Client(getCloudflareContext().env);

@@ -52,11 +52,17 @@ export class UploadManager {
   }
 
   async uploadFile(path: string, file: File): Promise<UploadResult> {
+    // Construct the full upload path using webkitRelativePath for folder uploads
+    const webkitRelativePath = (file as any).webkitRelativePath;
+    const fullPath = webkitRelativePath
+      ? (path ? `${path}/${webkitRelativePath}` : webkitRelativePath)
+      : (path ? `${path}/${file.name}` : file.name);
+
     // Determine upload method based on file size
     if (file.size > UPLOAD_CONFIG.MULTIPART_THRESHOLD) {
       // Use multipart upload for large files
       console.log(`Using multipart upload for large file: ${file.name} (${file.size} bytes)`);
-      return await this.multipartUploader.uploadFile(path, file);
+      return await this.multipartUploader.uploadFile(fullPath, file);
     }
 
     // Use regular server-side upload for smaller files
@@ -66,7 +72,7 @@ export class UploadManager {
     this.reportProgress(file.name, 0, false);
 
     // Upload the file with progress reporting
-    const result = await uploadObject(path, file);
+    const result = await uploadObject(fullPath, file);
 
     if (result.success) {
       this.reportProgress(file.name, 100, true);
@@ -87,14 +93,14 @@ export class UploadManager {
     
     // Upload multipart files first (they take longer)
     if (multipartFiles.length > 0) {
-      console.log(`Uploading ${multipartFiles.length} large files using multipart upload`);
+      console.log(`Uploading ${multipartFiles.length} large files using multipart upload to path: ${path}`);
       const multipartResults = await this.multipartUploader.uploadMultipleFiles(path, multipartFiles);
       results.push(...multipartResults);
     }
     
     // Upload regular files in batches
     if (regularFiles.length > 0) {
-      console.log(`Uploading ${regularFiles.length} files using regular upload`);
+      console.log(`Uploading ${regularFiles.length} files using regular upload to path: ${path}`);
       
       for (let i = 0; i < regularFiles.length; i += this.options.maxConcurrentUploads) {
         const batch = regularFiles.slice(i, i + this.options.maxConcurrentUploads);

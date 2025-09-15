@@ -26,9 +26,8 @@ export async function uploadObject(
   try {
     const client = new R2Client(getCloudflareContext().env);
 
-    // Use webkitRelativePath for folder uploads if available, otherwise use file.name
-    const relativePath = (file as any).webkitRelativePath || file.name;
-    const key = path ? `${path}/${relativePath}` : relativePath;
+    // Path now contains the complete upload path (including webkitRelativePath if applicable)
+    const key = path;
 
     const arrayBuffer = await file.arrayBuffer();
     const isLargeFile = arrayBuffer.byteLength > UPLOAD_CONFIG.LARGE_FILE_THRESHOLD;
@@ -63,8 +62,11 @@ export async function uploadObject(
  */
 export async function listFiles(path = ""): Promise<ListFilesResult> {
   try {
-    // Remove leading slash and ensure trailing slash for folder prefix
-    const normalizedPath = path.startsWith("/") ? path.substring(1) : path;
+    // Normalize path: remove leading slash, add trailing slash for non-root paths
+    let normalizedPath = path.startsWith("/") ? path.substring(1) : path;
+    if (normalizedPath && !normalizedPath.endsWith("/")) {
+      normalizedPath += "/";
+    }
 
     // Initialize R2 client with Cloudflare context
     const client = new R2Client(getCloudflareContext().env);
@@ -84,6 +86,50 @@ export async function listFiles(path = ""): Promise<ListFilesResult> {
       folders: [],
       path,
       error: `Failed to list files: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+}
+
+/**
+ * Create a folder in R2
+ */
+export async function createFolder(
+  path: string,
+  folderName: string,
+): Promise<{ success: boolean; error?: any }> {
+  try {
+    // Validate folder name
+    if (!folderName || !folderName.trim()) {
+      return { success: false, error: "Folder name cannot be empty" };
+    }
+
+    // Remove invalid characters
+    const sanitizedName = folderName.trim().replace(/[<>:"/\\|?*]/g, "");
+    if (sanitizedName !== folderName.trim()) {
+      return { success: false, error: "Folder name contains invalid characters" };
+    }
+
+    // Construct full folder path
+    // Normalize the current path (remove leading/trailing slashes)
+    let normalizedPath = path.startsWith("/") ? path.substring(1) : path;
+    if (normalizedPath.endsWith("/")) {
+      normalizedPath = normalizedPath.slice(0, -1);
+    }
+    
+    const folderPath = normalizedPath ? `${normalizedPath}/${sanitizedName}` : sanitizedName;
+
+    const client = new R2Client(getCloudflareContext().env);
+    await client.createFolder(folderPath);
+
+    // Revalidate the current path to refresh the UI
+    const revalidationPath = normalizedPath ? `/${normalizedPath}` : "/";
+    revalidatePath(revalidationPath);
+    return { success: true };
+  } catch (error) {
+    console.error(`Error creating folder:`, error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error)
     };
   }
 }
@@ -119,18 +165,34 @@ export async function deleteObjects(keys: string[]): Promise<{ success: boolean;
   try {
     const client = new R2Client(getCloudflareContext().env);
 
-    // Delete objects in parallel
-    const deletePromises = keys.map(async (key) => {
+    // Separate folders from files
+    const folders = keys.filter(key => key.endsWith('/'));
+    const files = keys.filter(key => !key.endsWith('/'));
+
+    // Delete files directly
+    if (files.length > 0) {
       try {
-        await client.deleteObject(key);
+        await client.deleteObjects(files);
       } catch (error) {
-        const errorMessage = `Failed to delete ${key}: ${error instanceof Error ? error.message : String(error)}`;
+        const errorMessage = `Failed to delete files: ${error instanceof Error ? error.message : String(error)}`;
         console.error(errorMessage);
         errors.push(errorMessage);
       }
-    });
+    }
 
-    await Promise.all(deletePromises);
+    // Delete folders by deleting all objects with that prefix
+    for (const folderKey of folders) {
+      try {
+        const objectsInFolder = await client.listObjectKeys(folderKey);
+        if (objectsInFolder.length > 0) {
+          await client.deleteObjects(objectsInFolder);
+        }
+      } catch (error) {
+        const errorMessage = `Failed to delete folder ${folderKey}: ${error instanceof Error ? error.message : String(error)}`;
+        console.error(errorMessage);
+        errors.push(errorMessage);
+      }
+    }
 
     // Revalidate the path to update the UI
     // Use the first key to determine the path
@@ -151,4 +213,11 @@ export async function deleteObjects(keys: string[]): Promise<{ success: boolean;
       errors: [`Failed to delete objects: ${error instanceof Error ? error.message : String(error)}`]
     };
   }
+}
+
+/**
+ * Get the R2 bucket name from Cloudflare environment
+ */
+export async function getBucketName(): Promise<string> {
+  return getCloudflareContext().env.R2_BUCKET_NAME;
 }

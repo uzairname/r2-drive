@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { listFiles } from "../../lib/actions";
+import { listFiles, createFolder, getBucketName } from "../../lib/actions";
 import { R2BucketNavigator } from "@/components/r2/file-navigator";
 import { deleteObjects } from "../../lib/actions";
 import { UploadManager } from "../../lib/upload-utils";
@@ -24,23 +24,35 @@ function toUiFileItem(item: FileItem, type: "file" | "folder"): UIFileItem {
     name: item.name,
     type,
     size: typeof item.size === "number" && type === "file" ? formatFileSize(item.size) : undefined,
-    lastModified: item.lastModified instanceof Date ? item.lastModified.toISOString().slice(0, 10) : (item.lastModified || "")
+    lastModified: type === "folder" ? "-" : (item.lastModified.toISOString().slice(0, 10))
   };
 }
 
 type SortKey = "name" | "size" | "lastModified";
 type SortDirection = "asc" | "desc";
 
+
 export default function ExplorerPage() {
-  const [path, setPath] = useState<string[]>(["my-bucket"]);
+  const [bucketName, setBucketName] = useState<string>("");
+  const [path, setPath] = useState<string[]>([]);
   const [items, setItems] = useState<UIFileItem[]>([]);
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
-  const bucketName = path[0] || "";
+
+  // Fetch bucket name on mount
+  useEffect(() => {
+    const fetchBucketName = async () => {
+      const name = await getBucketName();
+      setBucketName(name);
+      setPath([name]);
+    };
+    fetchBucketName();
+  }, []);
 
   const fetchItems = useCallback(async (currentPath: string[]) => {
     const joined = currentPath.slice(1).join("/");
+    console.log(`Fetching items for path: "${joined}"`);
     const { objects, folders } = await listFiles(joined);
     setItems([
       ...folders.map(f => toUiFileItem(f, "folder")),
@@ -50,8 +62,10 @@ export default function ExplorerPage() {
   }, []);
 
   useEffect(() => {
-    fetchItems(path);
-  }, [path, fetchItems]);
+    if (bucketName && path.length > 0) {
+      fetchItems(path);
+    }
+  }, [path, fetchItems, bucketName]);
 
   // Sorting logic: folders always first, then sort by key/direction
   const sortedItems = React.useMemo(() => {
@@ -135,8 +149,18 @@ export default function ExplorerPage() {
     // Convert item IDs to full keys for deletion
     const currentFolder = path.slice(1).join("/");
     const keysToDelete = selectedItemIds.map(itemId => {
-      // If we're in a subfolder, prepend the current path
-      return currentFolder ? `${currentFolder}/${itemId}` : itemId;
+      // The itemId is the full key (item.key from FileItem)
+      // For folders, this already includes the trailing slash
+      // For files in subfolders, we need to prepend the current path only if itemId doesn't already include it
+      
+      if (itemId.includes('/') || !currentFolder) {
+        // The itemId is already a full key (e.g., for folders with trailing slash)
+        // or we're in the root directory
+        return itemId;
+      } else {
+        // Regular file in a subfolder - prepend the current path
+        return `${currentFolder}/${itemId}`;
+      }
     });
 
     const result = await deleteObjects(keysToDelete);
@@ -147,7 +171,7 @@ export default function ExplorerPage() {
     }
     
     // Refresh the file list
-    fetchItems(path);
+    await fetchItems(path);
   };
 
   const handleDownload = async (selectedItemIds: string[]) => {
@@ -156,7 +180,20 @@ export default function ExplorerPage() {
     for (const itemId of selectedItemIds) {
       try {
         // Build the full key for the file
-        const key = currentFolder ? `${currentFolder}/${itemId}` : itemId;
+        // For folders, we skip download as they're just markers
+        if (itemId.endsWith('/')) {
+          console.log(`Skipping download for folder: ${itemId}`);
+          continue;
+        }
+        
+        let key: string;
+        if (itemId.includes('/') || !currentFolder) {
+          // The itemId is already a full key or we're in root
+          key = itemId;
+        } else {
+          // Regular file in a subfolder - prepend the current path
+          key = `${currentFolder}/${itemId}`;
+        }
         
         // Use the API route for download
         const url = `/api/download?key=${encodeURIComponent(key)}`;
@@ -164,7 +201,7 @@ export default function ExplorerPage() {
         // Create a download link
         const a = document.createElement('a');
         a.href = url;
-        a.download = itemId; // Use the item name as the download filename
+        a.download = itemId.split('/').pop() || itemId; // Use the last part as filename
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -172,6 +209,18 @@ export default function ExplorerPage() {
         console.error(`Error downloading ${itemId}:`, error);
       }
     }
+  };
+
+  const handleCreateFolder = async (folderName: string) => {
+    const currentFolder = path.slice(1).join("/");
+    const result = await createFolder(currentFolder, folderName);
+    
+    // Refresh the file list after successful folder creation
+    if (result.success) {
+      await fetchItems(path);
+    }
+    
+    return result;
   };
 
   return (
@@ -189,6 +238,7 @@ export default function ExplorerPage() {
           handleUpload={handleUpload}
           handleDelete={handleDelete}
           handleDownload={handleDownload}
+          handleCreateFolder={handleCreateFolder}
           sortKey={sortKey}
           sortDirection={sortDirection}
           handleSort={handleSort}

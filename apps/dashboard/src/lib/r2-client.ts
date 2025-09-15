@@ -32,6 +32,51 @@ export class R2Client {
   }
 
   /**
+   * Internal method to list R2 objects with pagination support
+   */
+  private async listR2Objects(
+    prefix = "",
+    delimiter?: string,
+    getAllResults = false
+  ): Promise<{ objects: R2Object[]; delimitedPrefixes: string[]; truncated: boolean; cursor?: string }> {
+    const allObjects: R2Object[] = [];
+    const allDelimitedPrefixes: string[] = [];
+    let cursor: string | undefined;
+    let hasMore = true;
+
+    while (hasMore) {
+      const options: R2ListOptions = {
+        prefix,
+        delimiter,
+        limit: 1000,
+        cursor,
+      };
+
+      const listing = await this.r2.list(options);
+      
+      allObjects.push(...listing.objects);
+      allDelimitedPrefixes.push(...listing.delimitedPrefixes);
+      
+      hasMore = listing.truncated && getAllResults;
+      if (hasMore && 'cursor' in listing) {
+        cursor = (listing as any).cursor;
+      } else {
+        cursor = undefined;
+      }
+
+      // If we only want one page, break after first iteration
+      if (!getAllResults) break;
+    }
+
+    return {
+      objects: allObjects,
+      delimitedPrefixes: allDelimitedPrefixes,
+      truncated: hasMore,
+      cursor
+    };
+  }
+
+  /**
    * List objects in the bucket with an optional prefix and delimiter
    */
   async listObjects(
@@ -39,18 +84,16 @@ export class R2Client {
     delimiter = "/"
   ): Promise<R2ListResult> {
     try {
-      const options: R2ListOptions = {
-        prefix,
-        delimiter,
-        limit: 1000, // Maximum number of objects to return in one request
-      };
+      const result = await this.listR2Objects(prefix, delimiter, false);
 
-      const listing = await this.r2.list(options);
-
-      console.log(`Listing: `, listing);
+      console.log(`Listing with prefix "${prefix}":`, {
+        objects: result.objects.map(o => ({ key: o.key, size: o.size })),
+        delimitedPrefixes: result.delimitedPrefixes
+      });
       
-      // Convert R2Objects to FileItems
-      const objects = listing.objects.map((obj) => ({
+      const regularObjects = result.objects.filter((obj) => !(obj.key.endsWith("/") && obj.size === 0));
+
+      const objects = regularObjects.map((obj) => ({
         key: obj.key,
         name: obj.key.split("/").pop() || obj.key,
         size: obj.size,
@@ -60,11 +103,13 @@ export class R2Client {
       }));
 
       // Convert CommonPrefixes to folder FileItems
-      const folders = listing.delimitedPrefixes.map((prefix) => ({
+      const folders = result.delimitedPrefixes.map((prefix) => ({
         key: prefix,
-        name: prefix.split("/").slice(-2)[0] || prefix,
+        name: prefix.endsWith("/")
+          ? prefix.slice(0, -1).split("/").pop() || prefix
+          : prefix.split("/").pop() || prefix,
         size: 0,
-        lastModified: new Date(0), // We don't have this info for folders
+        lastModified: new Date(0),
         etag: "",
         isFolder: true,
       }));
@@ -72,8 +117,8 @@ export class R2Client {
       return {
         objects,
         folders,
-        truncated: listing.truncated,
-        cursor: listing.truncated ? listing.cursor : undefined,
+        truncated: result.truncated,
+        cursor: result.cursor,
       };
     } catch (error) {
       console.error("Error listing objects:", error);
@@ -186,6 +231,29 @@ export class R2Client {
   }
 
   /**
+   * List the keys of all objects with a given prefix
+   */
+  async listObjectKeys(prefix: string): Promise<string[]> {
+    const result = await this.listR2Objects(prefix, undefined, true);
+    return result.objects.map(obj => obj.key);    
+  }
+
+  /**
+   * Delete multiple objects from the bucket
+   */
+  async deleteObjects(keys: string[]): Promise<void> {
+    // R2 delete method can handle arrays for bulk deletion
+    if (keys.length === 0) return;
+    
+    // Delete in batches if we have too many keys
+    const batchSize = 1000; // R2 limit for bulk operations
+    for (let i = 0; i < keys.length; i += batchSize) {
+      const batch = keys.slice(i, i + batchSize);
+      await this.r2.delete(batch);
+    }
+  }
+
+  /**
    * Create a folder by uploading an empty object with the folder name as the key
    * Ending with a trailing slash to indicate it's a folder
    */
@@ -193,51 +261,31 @@ export class R2Client {
     // Ensure the key ends with a trailing slash
     const folderKey = key.endsWith("/") ? key : `${key}/`;
     
-    try {
-      // Create an empty object with the folder key
-      return await this.r2.put(folderKey, "");
-    } catch (error) {
-      console.error(`Error creating folder ${folderKey}:`, error);
-      throw new Error(`Failed to create folder: ${error instanceof Error ? error.message : String(error)}`);
-    }
+    return await this.r2.put(folderKey, "");
+
   }
 
   /**
    * Initiate a multipart upload for presigned URL approach
    */
   async initiateMultipartUpload(key: string, options?: R2PutOptions): Promise<R2MultipartUpload> {
-    try {
-      return await this.r2.createMultipartUpload(key, options);
-    } catch (error) {
-      console.error(`Error initiating multipart upload for ${key}:`, error);
-      throw new Error(`Failed to initiate multipart upload: ${error instanceof Error ? error.message : String(error)}`);
-    }
+    return await this.r2.createMultipartUpload(key, options);
   }
 
   /**
    * Complete a multipart upload
    */
   async completeMultipartUpload(uploadId: string, key: string, parts: R2UploadedPart[]): Promise<R2Object | null> {
-    try {
-      // Note: We need to get the multipart upload object first
-      const multipartUpload = await this.r2.resumeMultipartUpload(key, uploadId);
-      return await multipartUpload.complete(parts);
-    } catch (error) {
-      console.error(`Error completing multipart upload ${uploadId}:`, error);
-      throw new Error(`Failed to complete multipart upload: ${error instanceof Error ? error.message : String(error)}`);
-    }
+    // Note: We need to get the multipart upload object first
+    const multipartUpload = this.r2.resumeMultipartUpload(key, uploadId);
+    return await multipartUpload.complete(parts);
   }
 
   /**
    * Abort a multipart upload
    */
   async abortMultipartUpload(uploadId: string, key: string): Promise<void> {
-    try {
-      const multipartUpload = await this.r2.resumeMultipartUpload(key, uploadId);
+      const multipartUpload = this.r2.resumeMultipartUpload(key, uploadId);
       await multipartUpload.abort();
-    } catch (error) {
-      console.error(`Error aborting multipart upload ${uploadId}:`, error);
-      throw new Error(`Failed to abort multipart upload: ${error instanceof Error ? error.message : String(error)}`);
-    }
   }
 }

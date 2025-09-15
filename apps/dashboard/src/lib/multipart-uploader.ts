@@ -62,13 +62,15 @@ export class MultipartUploader {
 
     this.reportProgress(fileName, fileSize, 0, 0, totalParts);
 
+    console.log(`Starting multipart upload for ${fileName}, size: ${fileSize} bytes, total parts: ${totalParts}, path: ${path}`);
+
     try {
       // Step 1: Initiate multipart upload
       const initResponse = await fetch('/api/upload/multipart/initiate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          key: path ? `${path}/${fileName}` : fileName,
+          key: path,
           contentType: file.type || 'application/octet-stream'
         })
       });
@@ -158,8 +160,6 @@ export class MultipartUploader {
         throw new Error(`Failed to complete upload: ${completeResponse.statusText}`);
       }
 
-      const completeResult = await completeResponse.json();
-
       this.reportProgress(fileName, fileSize, fileSize, totalParts, totalParts, true);
 
       return {
@@ -191,7 +191,14 @@ export class MultipartUploader {
     
     // Process files sequentially to avoid overwhelming the server
     for (const file of files) {
-      const result = await this.uploadFile(path, file);
+      // Construct the full upload path using webkitRelativePath for folder uploads
+      const webkitRelativePath = (file as any).webkitRelativePath;
+      const fullPath = webkitRelativePath
+        ? (path ? `${path}/${webkitRelativePath}` : webkitRelativePath)
+        : (path ? `${path}/${file.name}` : file.name);
+      
+
+      const result = await this.uploadFile(fullPath, file);
       results.push(result);
       
       // Small delay between files
