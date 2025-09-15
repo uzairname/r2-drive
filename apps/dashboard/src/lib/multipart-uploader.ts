@@ -192,7 +192,7 @@ export class MultipartUploader {
     // Process files sequentially to avoid overwhelming the server
     for (const file of files) {
       // Construct the full upload path using webkitRelativePath for folder uploads
-      const webkitRelativePath = (file as any).webkitRelativePath;
+      const webkitRelativePath = file.webkitRelativePath;
       const fullPath = webkitRelativePath
         ? (path ? `${path}/${webkitRelativePath}` : webkitRelativePath)
         : (path ? `${path}/${file.name}` : file.name);

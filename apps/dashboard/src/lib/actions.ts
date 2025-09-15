@@ -96,17 +96,17 @@ export async function listFiles(path = ""): Promise<ListFilesResult> {
 export async function createFolder(
   path: string,
   folderName: string,
-): Promise<{ success: boolean; error?: any }> {
+): Promise<{ success: boolean; errorMessage?: string }> {
   try {
     // Validate folder name
     if (!folderName || !folderName.trim()) {
-      return { success: false, error: "Folder name cannot be empty" };
+      return { success: false, errorMessage: "Folder name cannot be empty" };
     }
 
     // Remove invalid characters
     const sanitizedName = folderName.trim().replace(/[<>:"/\\|?*]/g, "");
     if (sanitizedName !== folderName.trim()) {
-      return { success: false, error: "Folder name contains invalid characters" };
+      return { success: false, errorMessage: "Folder name contains invalid characters" };
     }
 
     // Construct full folder path
@@ -129,7 +129,7 @@ export async function createFolder(
     console.error(`Error creating folder:`, error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : String(error)
+      errorMessage: error instanceof Error ? error.message : String(error)
     };
   }
 }

@@ -53,7 +53,7 @@ export class UploadManager {
 
   async uploadFile(path: string, file: File): Promise<UploadResult> {
     // Construct the full upload path using webkitRelativePath for folder uploads
-    const webkitRelativePath = (file as any).webkitRelativePath;
+    const webkitRelativePath = file.webkitRelativePath;
     const fullPath = webkitRelativePath
       ? (path ? `${path}/${webkitRelativePath}` : webkitRelativePath)
       : (path ? `${path}/${file.name}` : file.name);

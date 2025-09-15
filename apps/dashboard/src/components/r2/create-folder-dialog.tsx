@@ -13,7 +13,7 @@ import {
 interface CreateFolderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreateFolder: (folderName: string) => Promise<{ success: boolean; error?: any }>;
+  onCreateFolder: (folderName: string) => Promise<{ success: boolean; errorMessage?: string }>;
 }
 
 export function CreateFolderDialog({
@@ -23,14 +23,14 @@ export function CreateFolderDialog({
 }: CreateFolderDialogProps) {
   const [folderName, setFolderName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!folderName.trim() || isCreating) return;
 
     setIsCreating(true);
-    setError(null);
+    setErrorMessage(null);
 
     try {
       const result = await onCreateFolder(folderName.trim());
@@ -38,10 +38,10 @@ export function CreateFolderDialog({
         setFolderName("");
         onOpenChange(false);
       } else {
-        setError(result.error || "Failed to create folder");
+        setErrorMessage(result.errorMessage || "Failed to create folder");
       }
     } catch (err) {
-      setError("An unexpected error occurred");
+      setErrorMessage("An unexpected error occurred");
     } finally {
       setIsCreating(false);
     }
@@ -51,7 +51,7 @@ export function CreateFolderDialog({
     if (!isCreating) {
       if (!newOpen) {
         setFolderName("");
-        setError(null);
+        setErrorMessage(null);
       }
       onOpenChange(newOpen);
     }
@@ -82,9 +82,9 @@ export function CreateFolderDialog({
               disabled={isCreating}
               autoFocus
             />
-            {(validationError || error) && (
+            {(validationError && errorMessage) && (
               <p className="mt-2 text-sm text-red-600">
-                {validationError || error}
+                {validationError}
               </p>
             )}
           </div>

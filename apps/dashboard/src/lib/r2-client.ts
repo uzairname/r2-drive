@@ -59,7 +59,7 @@ export class R2Client {
       
       hasMore = listing.truncated && getAllResults;
       if (hasMore && 'cursor' in listing) {
-        cursor = (listing as any).cursor;
+        cursor = listing.cursor;
       } else {
         cursor = undefined;
       }

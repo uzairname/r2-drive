@@ -21,7 +21,6 @@ export function UploadProgress({ uploads, isVisible, onClose }: UploadProgressPr
 
   const completedUploads = uploads.filter(upload => upload.completed && !upload.error);
   const failedUploads = uploads.filter(upload => upload.error);
-  const inProgressUploads = uploads.filter(upload => !upload.completed && !upload.error);
   
   const overallProgress = uploads.length > 0 
     ? Math.round((completedUploads.length / uploads.length) * 100)

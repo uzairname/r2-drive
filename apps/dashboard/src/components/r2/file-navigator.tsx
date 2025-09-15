@@ -29,7 +29,7 @@ export interface R2BucketNavigatorProps {
   handleUpload: (files: File[], currentPath: string[], onProgress?: (progress: UploadProgressItem) => void) => Promise<void>;
   handleDelete: (selectedItems: string[]) => Promise<void>;
   handleDownload: (selectedItems: string[]) => Promise<void>;
-  handleCreateFolder: (folderName: string) => Promise<{ success: boolean; error?: any }>;
+  handleCreateFolder: (folderName: string) => Promise<{ success: boolean; errorMessage?: string }>;
   sortKey: "name" | "size" | "lastModified";
   sortDirection: "asc" | "desc";
   handleSort: (key: "name" | "size" | "lastModified") => void;
