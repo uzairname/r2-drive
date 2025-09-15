@@ -6,11 +6,14 @@
 	"$schema": "../../packages/utils/wrangler-config-schema.json",
 	"name": "r2-drive",
 	"main": ".open-next/worker.js",
+	"workers_dev": true,
 	"compatibility_date": "2025-03-01",
 	"compatibility_flags": [
 		"nodejs_compat",
 		"global_fetch_strictly_public"
 	],
+	// Uncomment if you want to specify a custom domain
+	// "route": { "pattern": "your-domain.com/*", "custom_domain": true },
 	"assets": {
 		"binding": "ASSETS",
 		"directory": ".open-next/assets"
@@ -20,9 +23,13 @@
 	},
 	"r2_buckets": [
 		{
-			"binding": "R2_STORAGE",
-			"bucket_name": "r2-drive-storage"
-		}
+			"binding": "FILES",
+			"bucket_name": "files"
+		},
+    {
+      "binding": "NEXT_INC_CACHE_R2_BUCKET",
+      "bucket_name": "r2explorer-next-cache"
+    }
 	],
 	"vars": {
 		"ENABLE_AUTH": "true",

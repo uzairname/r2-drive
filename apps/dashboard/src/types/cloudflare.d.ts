@@ -1,10 +1,10 @@
 // Import CloudflareEnv type from generated file
 
-// Update Cloudflare environment with R2_STORAGE binding
+// Update Cloudflare environment with bindings
 declare module "../cloudflare-env" {
   interface CloudflareEnv {
     // Add R2 binding
-    R2_STORAGE: R2Bucket;
+    FILES: R2Bucket;
     
     // Add environment variables
     ENABLE_AUTH: string;
