@@ -1,14 +1,51 @@
+
 "use server";
 
 import { R2Client, FileItem } from "@/lib/r2-client";
 import { revalidatePath } from "next/cache";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { UploadResult, UPLOAD_CONFIG } from "@/types/upload";
 
 interface ListFilesResult {
   objects: FileItem[];
   folders: FileItem[];
   path: string;
   error?: string;
+}
+
+/**
+ * Upload an object to R2 with automatic multipart for large files
+ */
+export async function uploadObject(path: string, file: File): Promise<UploadResult> {
+  try {
+    const client = new R2Client(getCloudflareContext().env);
+    
+    // Use webkitRelativePath for folder uploads if available, otherwise use file.name
+    const relativePath = (file as any).webkitRelativePath || file.name;
+    const key = path ? `${path}/${relativePath}` : relativePath;
+    
+    const arrayBuffer = await file.arrayBuffer();
+    const isLargeFile = arrayBuffer.byteLength > UPLOAD_CONFIG.LARGE_FILE_THRESHOLD;
+    
+    if (isLargeFile) {
+      // Use multipart upload for large files
+      await client.putObjectMultipart(key, arrayBuffer);
+    } else {
+      // Use regular upload for smaller files
+      await client.putObject(key, arrayBuffer);
+    }
+    
+    revalidatePath(path ? `/${path}` : "/");
+    return { 
+      success: true, 
+      fileName: file.name,
+      isMultipart: isLargeFile
+    };
+  } catch (error) {
+    const errorMessage = `Failed to upload ${file.name}: ${error instanceof Error ? error.message : String(error)}`;
+    console.error(`Error uploading object:`, error);
+    return { success: false, fileName: file.name, error: errorMessage };
+  }
 }
 
 /**
@@ -91,6 +128,49 @@ export async function deleteObject(key: string): Promise<{ success: boolean; err
     return { 
       success: false, 
       error: `Failed to delete object: ${error instanceof Error ? error.message : String(error)}` 
+    };
+  }
+}
+
+/**
+ * Delete multiple objects from R2
+ */
+export async function deleteObjects(keys: string[]): Promise<{ success: boolean; errors?: string[] }> {
+  const errors: string[] = [];
+  
+  try {
+    const client = new R2Client(getCloudflareContext().env);
+    
+    // Delete objects in parallel
+    const deletePromises = keys.map(async (key) => {
+      try {
+        await client.deleteObject(key);
+      } catch (error) {
+        const errorMessage = `Failed to delete ${key}: ${error instanceof Error ? error.message : String(error)}`;
+        console.error(errorMessage);
+        errors.push(errorMessage);
+      }
+    });
+    
+    await Promise.all(deletePromises);
+    
+    // Revalidate the path to update the UI
+    // Use the first key to determine the path
+    if (keys.length > 0) {
+      const firstKey = keys[0]!;
+      const path = firstKey.includes("/") ? `/${firstKey.split("/").slice(0, -1).join("/")}` : "/";
+      revalidatePath(path);
+    }
+    
+    return { 
+      success: errors.length === 0,
+      errors: errors.length > 0 ? errors : undefined
+    };
+  } catch (error) {
+    console.error(`Error deleting objects:`, error);
+    return { 
+      success: false, 
+      errors: [`Failed to delete objects: ${error instanceof Error ? error.message : String(error)}`]
     };
   }
 }

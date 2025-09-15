@@ -46,6 +46,8 @@ export class R2Client {
       };
 
       const listing = await this.r2.list(options);
+
+      console.log(`Listing: `, listing);
       
       // Convert R2Objects to FileItems
       const objects = listing.objects.map((obj) => ({
@@ -92,14 +94,87 @@ export class R2Client {
   }
 
   /**
-   * Upload an object to the bucket
+   * Upload an object to the bucket (optimized for size)
    */
-  async putObject(key: string, data: ReadableStream | ArrayBuffer | string): Promise<R2Object | null> {
+  async putObject(
+    key: string, 
+    data: ReadableStream | ArrayBuffer | string,
+    onProgress?: (progress: { uploaded: number; total: number }) => void
+  ): Promise<R2Object | null> {
     try {
+      // For ArrayBuffer, check size and use multipart if needed
+      if (data instanceof ArrayBuffer && data.byteLength > 50 * 1024 * 1024) { // 50MB threshold
+        return await this.putObjectMultipart(key, data, onProgress);
+      }
+      
+      // For smaller files, simulate progress since R2 doesn't provide upload progress
+      if (onProgress && data instanceof ArrayBuffer) {
+        const totalSize = data.byteLength;
+        onProgress({ uploaded: 0, total: totalSize });
+        
+        const result = await this.r2.put(key, data);
+        
+        onProgress({ uploaded: totalSize, total: totalSize });
+        return result;
+      }
+      
       return await this.r2.put(key, data);
     } catch (error) {
       console.error(`Error uploading object ${key}:`, error);
       throw new Error(`Failed to upload object: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Upload large objects using multipart upload
+   */
+  async putObjectMultipart(
+    key: string, 
+    data: ArrayBuffer,
+    onProgress?: (progress: { uploaded: number; total: number }) => void
+  ): Promise<R2Object | null> {
+    try {
+      const chunkSize = 5 * 1024 * 1024; // 5MB chunks (minimum for multipart)
+      const totalSize = data.byteLength;
+      const totalParts = Math.ceil(totalSize / chunkSize);
+
+      // Create multipart upload
+      const multipartUpload = await this.r2.createMultipartUpload(key);
+      const uploadId = multipartUpload.uploadId;
+      
+      const parts: R2UploadedPart[] = [];
+      let uploadedBytes = 0;
+
+      try {
+        // Upload each part
+        for (let partNumber = 1; partNumber <= totalParts; partNumber++) {
+          const start = (partNumber - 1) * chunkSize;
+          const end = Math.min(start + chunkSize, totalSize);
+          const chunk = data.slice(start, end);
+
+          const part = await multipartUpload.uploadPart(partNumber, chunk);
+          parts.push({
+            partNumber,
+            etag: part.etag
+          });
+
+          uploadedBytes += chunk.byteLength;
+          onProgress?.({
+            uploaded: uploadedBytes,
+            total: totalSize
+          });
+        }
+
+        // Complete the multipart upload
+        return await multipartUpload.complete(parts);
+      } catch (error) {
+        // Abort the multipart upload on error
+        await multipartUpload.abort();
+        throw error;
+      }
+    } catch (error) {
+      console.error(`Error uploading multipart object ${key}:`, error);
+      throw new Error(`Failed to upload multipart object: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 

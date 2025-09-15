@@ -1,5 +1,5 @@
 {
-  "extends": "@workspace/typescript-config/nextjs.json",  
+  "extends": "@workspace/typescript-config/nextjs.json",
   "compilerOptions": {
     "plugins": [
       {
@@ -7,15 +7,29 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"],
-      "@workspace/ui/*": ["../../packages/ui/src/*"],
-      "@workspace/ui": ["../../packages/ui/src"]
+      "@/*": [
+        "./src/*"
+      ],
+      "@workspace/ui/*": [
+        "../../packages/ui/src/*"
+      ],
+      "@workspace/ui": [
+        "../../packages/ui/src"
+      ]
     },
     "types": [
       "./worker-configuration.d.ts",
       "node"
-    ]
+    ],
+    "allowJs": true
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }
