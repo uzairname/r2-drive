@@ -3,14 +3,16 @@
 import { uploadObject } from "./actions";
 import type { UploadProgressItem } from "@workspace/ui/components/upload-progress";
 import { UploadResult, UploadOptions, UPLOAD_CONFIG } from "@/types/upload";
+import { MultipartUploader, type MultipartUploadProgress } from "./multipart-uploader";
 
 /**
- * Enhanced client-side upload utility with progress reporting
+ * Enhanced client-side upload utility with progress reporting and multipart support
  */
 export class UploadManager {
   private onProgress?: (progress: UploadProgressItem) => void;
   private onComplete?: (results: UploadResult[]) => void;
   private options: Required<UploadOptions>;
+  private multipartUploader: MultipartUploader;
 
   constructor(
     onProgress?: (progress: UploadProgressItem) => void,
@@ -24,6 +26,20 @@ export class UploadManager {
       maxConcurrentUploads: UPLOAD_CONFIG.DEFAULT_MAX_CONCURRENT_UPLOADS,
       ...options
     };
+
+    // Create multipart uploader with progress reporting
+    this.multipartUploader = new MultipartUploader(
+      (multipartProgress: MultipartUploadProgress) => {
+        // Convert multipart progress to regular progress format
+        this.reportProgress(
+          multipartProgress.fileName,
+          multipartProgress.progress,
+          multipartProgress.completed,
+          multipartProgress.error
+        );
+      },
+      this.options.chunkSize
+    );
   }
 
   private reportProgress(fileName: string, progress: number, completed: boolean, error?: string) {
@@ -35,61 +51,64 @@ export class UploadManager {
     });
   }
 
-  private isLargeFile(file: File): boolean {
-    return file.size > UPLOAD_CONFIG.LARGE_FILE_THRESHOLD;
-  }
-
   async uploadFile(path: string, file: File): Promise<UploadResult> {
-    try {
-      // Report initial progress
-      this.reportProgress(file.name, 0, false);
-
-      // For large files, show more detailed progress simulation
-      if (this.isLargeFile(file)) {
-        const progressSteps = [10, 25, 40, 55, 70, 85, 95];
-        for (const step of progressSteps) {
-          this.reportProgress(file.name, step, false);
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
-      } else {
-        // For small files, show simple progress
-        this.reportProgress(file.name, 25, false);
-        await new Promise(resolve => setTimeout(resolve, 50));
-      }
-
-      // Upload the file (server handles multipart automatically based on size)
-      const result = await uploadObject(path, file);
-
-      if (result.success) {
-        this.reportProgress(file.name, 100, true);
-      } else {
-        this.reportProgress(file.name, 0, false, result.error);
-      }
-
-      return result;
-    } catch (error) {
-      const errorMessage = `Failed to upload ${file.name}: ${error instanceof Error ? error.message : String(error)}`;
-      this.reportProgress(file.name, 0, false, errorMessage);
-      return { success: false, fileName: file.name, error: errorMessage };
+    // Determine upload method based on file size
+    if (file.size > UPLOAD_CONFIG.MULTIPART_THRESHOLD) {
+      // Use multipart upload for large files
+      console.log(`Using multipart upload for large file: ${file.name} (${file.size} bytes)`);
+      return await this.multipartUploader.uploadFile(path, file);
     }
+
+    // Use regular server-side upload for smaller files
+    console.log(`Using regular upload for file: ${file.name} (${file.size} bytes)`);
+
+    // Report initial progress
+    this.reportProgress(file.name, 0, false);
+
+    // Upload the file with progress reporting
+    const result = await uploadObject(path, file);
+
+    if (result.success) {
+      this.reportProgress(file.name, 100, true);
+    } else {
+      const errorMessage = result.error instanceof Error ? result.error.message : String(result.error);
+      this.reportProgress(file.name, 0, false, errorMessage);
+    }
+
+    return result;
   }
 
   async uploadMultipleFiles(path: string, files: File[]): Promise<UploadResult[]> {
     const results: UploadResult[] = [];
     
-    // Process files in batches to respect concurrent upload limit
-    for (let i = 0; i < files.length; i += this.options.maxConcurrentUploads) {
-      const batch = files.slice(i, i + this.options.maxConcurrentUploads);
+    // Separate files by upload method
+    const regularFiles = files.filter(file => file.size <= UPLOAD_CONFIG.MULTIPART_THRESHOLD);
+    const multipartFiles = files.filter(file => file.size > UPLOAD_CONFIG.MULTIPART_THRESHOLD);
+    
+    // Upload multipart files first (they take longer)
+    if (multipartFiles.length > 0) {
+      console.log(`Uploading ${multipartFiles.length} large files using multipart upload`);
+      const multipartResults = await this.multipartUploader.uploadMultipleFiles(path, multipartFiles);
+      results.push(...multipartResults);
+    }
+    
+    // Upload regular files in batches
+    if (regularFiles.length > 0) {
+      console.log(`Uploading ${regularFiles.length} files using regular upload`);
       
-      // Upload batch concurrently
-      const batchPromises = batch.map(file => this.uploadFile(path, file));
-      const batchResults = await Promise.all(batchPromises);
-      
-      results.push(...batchResults);
-      
-      // Small delay between batches
-      if (i + this.options.maxConcurrentUploads < files.length) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+      for (let i = 0; i < regularFiles.length; i += this.options.maxConcurrentUploads) {
+        const batch = regularFiles.slice(i, i + this.options.maxConcurrentUploads);
+        
+        // Upload batch concurrently
+        const batchPromises = batch.map(file => this.uploadFile(path, file));
+        const batchResults = await Promise.all(batchPromises);
+        
+        results.push(...batchResults);
+        
+        // Small delay between batches
+        if (i + this.options.maxConcurrentUploads < regularFiles.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
       }
     }
     

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { listFiles } from "../../lib/actions";
 import { R2BucketNavigator } from "@/components/r2/file-navigator";
-import { deleteObjects, getObject } from "../../lib/actions";
+import { deleteObjects } from "../../lib/actions";
 import { UploadManager } from "../../lib/upload-utils";
 import { FileItem } from "../../lib/r2-client";
 import type { UIFileItem } from "@/components/r2/file-table";
@@ -117,10 +117,7 @@ export default function ExplorerPage() {
     
     // Create upload manager with progress callback
     const uploadManager = new UploadManager(
-      (progress) => {
-        // Forward progress updates to the file-navigator
-        onProgress?.(progress);
-      },
+      onProgress,
       (results) => {
         // Upload completed - refresh file list
         const successCount = results.filter(r => r.success).length;
@@ -161,25 +158,16 @@ export default function ExplorerPage() {
         // Build the full key for the file
         const key = currentFolder ? `${currentFolder}/${itemId}` : itemId;
         
-        // Get the file data
-        const response = await getObject(key);
+        // Use the API route for download
+        const url = `/api/download?key=${encodeURIComponent(key)}`;
         
-        if (response.ok) {
-          // Create a blob from the response
-          const blob = await response.blob();
-          
-          // Create a download link
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = itemId; // Use the item name as the download filename
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        } else {
-          console.error(`Failed to download ${itemId}: ${response.statusText}`);
-        }
+        // Create a download link
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = itemId; // Use the item name as the download filename
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
       } catch (error) {
         console.error(`Error downloading ${itemId}:`, error);
       }

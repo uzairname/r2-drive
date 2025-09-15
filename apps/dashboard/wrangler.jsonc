@@ -32,7 +32,8 @@
     }
 	],
 	"vars": {
+    "R2_BUCKET_NAME": "files",
 		"ENABLE_AUTH": "true",
 		"ALLOWED_ORIGINS": "*"
-	}
+	},
 }

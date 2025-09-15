@@ -104,7 +104,7 @@ export class R2Client {
     try {
       // For ArrayBuffer, check size and use multipart if needed
       if (data instanceof ArrayBuffer && data.byteLength > 50 * 1024 * 1024) { // 50MB threshold
-        return await this.putObjectMultipart(key, data, onProgress);
+        return await this.putObjectMultipart(key, data);
       }
       
       // For smaller files, simulate progress since R2 doesn't provide upload progress
@@ -131,7 +131,6 @@ export class R2Client {
   async putObjectMultipart(
     key: string, 
     data: ArrayBuffer,
-    onProgress?: (progress: { uploaded: number; total: number }) => void
   ): Promise<R2Object | null> {
     try {
       const chunkSize = 5 * 1024 * 1024; // 5MB chunks (minimum for multipart)
@@ -159,10 +158,6 @@ export class R2Client {
           });
 
           uploadedBytes += chunk.byteLength;
-          onProgress?.({
-            uploaded: uploadedBytes,
-            total: totalSize
-          });
         }
 
         // Complete the multipart upload
@@ -204,6 +199,45 @@ export class R2Client {
     } catch (error) {
       console.error(`Error creating folder ${folderKey}:`, error);
       throw new Error(`Failed to create folder: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Initiate a multipart upload for presigned URL approach
+   */
+  async initiateMultipartUpload(key: string, options?: R2PutOptions): Promise<R2MultipartUpload> {
+    try {
+      return await this.r2.createMultipartUpload(key, options);
+    } catch (error) {
+      console.error(`Error initiating multipart upload for ${key}:`, error);
+      throw new Error(`Failed to initiate multipart upload: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Complete a multipart upload
+   */
+  async completeMultipartUpload(uploadId: string, key: string, parts: R2UploadedPart[]): Promise<R2Object | null> {
+    try {
+      // Note: We need to get the multipart upload object first
+      const multipartUpload = await this.r2.resumeMultipartUpload(key, uploadId);
+      return await multipartUpload.complete(parts);
+    } catch (error) {
+      console.error(`Error completing multipart upload ${uploadId}:`, error);
+      throw new Error(`Failed to complete multipart upload: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Abort a multipart upload
+   */
+  async abortMultipartUpload(uploadId: string, key: string): Promise<void> {
+    try {
+      const multipartUpload = await this.r2.resumeMultipartUpload(key, uploadId);
+      await multipartUpload.abort();
+    } catch (error) {
+      console.error(`Error aborting multipart upload ${uploadId}:`, error);
+      throw new Error(`Failed to abort multipart upload: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 }
