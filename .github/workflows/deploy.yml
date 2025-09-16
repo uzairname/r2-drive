@@ -46,10 +46,11 @@ jobs:
 
       - name: Publish secrets to Cloudflare Worker
         run: |
-          npx wrangler secret put NEXTAUTH_SECRET <<< "${{ secrets.NEXTAUTH_SECRET }}"
-          npx wrangler secret put GOOGLE_CLIENT_ID <<< "${{ secrets.GOOGLE_CLIENT_ID }}"
-          npx wrangler secret put GOOGLE_CLIENT_SECRET <<< "${{ secrets.GOOGLE_CLIENT_SECRET }}"
-          npx wrangler secret put ADMIN_EMAILS <<< "${{ secrets.ADMIN_EMAILS }}"
+          npm install -g wrangler
+          echo "${{ secrets.NEXTAUTH_SECRET }}" | wrangler secret put NEXTAUTH_SECRET
+          echo "${{ secrets.GOOGLE_CLIENT_ID }}" | wrangler secret put GOOGLE_CLIENT_ID
+          echo "${{ secrets.GOOGLE_CLIENT_SECRET }}" | wrangler secret put GOOGLE_CLIENT_SECRET
+          echo "${{ secrets.ADMIN_EMAILS }}" | wrangler secret put ADMIN_EMAILS
 
       - name: Deploy to Cloudflare
         env:
