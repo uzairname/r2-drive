@@ -9,40 +9,40 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Updated color tokens for Cloudflare R2 interface */
+  /* Grayscale theme for light mode */
   --background: oklch(1 0 0); /* White background */
   --foreground: oklch(0.3 0 0); /* Dark gray text */
-  --card: oklch(0.98 0.01 142); /* Light green card background */
+  --card: oklch(0.98 0 0); /* Light gray card background */
   --card-foreground: oklch(0.3 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.3 0 0);
-  --primary: oklch(0.55 0.15 142); /* Green primary color */
+  --primary: oklch(0.2 0 0); /* Dark gray primary */
   --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.75 0.12 85); /* Lime accent */
+  --secondary: oklch(0.85 0 0); /* Light gray accent */
   --secondary-foreground: oklch(0.3 0 0);
-  --muted: oklch(0.98 0.01 142);
-  --muted-foreground: oklch(0.3 0 0);
-  --accent: oklch(0.75 0.12 85);
-  --accent-foreground: oklch(1 0 0);
-  --destructive: oklch(0.55 0.2 25);
+  --muted: oklch(0.96 0 0);
+  --muted-foreground: oklch(0.5 0 0);
+  --accent: oklch(0.8 0 0);
+  --accent-foreground: oklch(0.2 0 0);
+  --destructive: oklch(0.4 0 0);
   --destructive-foreground: oklch(1 0 0);
   --border: oklch(0.9 0 0);
   --input: oklch(1 0 0);
-  --ring: oklch(0.55 0.15 142 / 0.5);
-  --chart-1: oklch(0.55 0.15 142);
-  --chart-2: oklch(0.75 0.12 85);
-  --chart-3: oklch(0.4 0 0);
-  --chart-4: oklch(0.55 0.2 25);
-  --chart-5: oklch(0.6 0.15 200);
+  --ring: oklch(0.5 0 0 / 0.5);
+  --chart-1: oklch(0.3 0 0);
+  --chart-2: oklch(0.5 0 0);
+  --chart-3: oklch(0.7 0 0);
+  --chart-4: oklch(0.4 0 0);
+  --chart-5: oklch(0.6 0 0);
   --radius: 0.5rem;
   --sidebar: oklch(1 0 0);
   --sidebar-foreground: oklch(0.3 0 0);
-  --sidebar-primary: oklch(0.98 0.01 142);
+  --sidebar-primary: oklch(0.96 0 0);
   --sidebar-primary-foreground: oklch(0.3 0 0);
-  --sidebar-accent: oklch(0.75 0.12 85);
-  --sidebar-accent-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.85 0 0);
+  --sidebar-accent-foreground: oklch(0.2 0 0);
   --sidebar-border: oklch(0.9 0 0);
-  --sidebar-ring: oklch(0.55 0.15 142 / 0.5);
+  --sidebar-ring: oklch(0.5 0 0 / 0.5);
 }
 
 .dark {

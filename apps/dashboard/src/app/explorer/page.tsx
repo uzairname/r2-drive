@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { listFiles, createFolder, getBucketName } from "../../lib/actions";
 import { R2BucketNavigator } from "@/components/r2/file-navigator";
 import { deleteObjects } from "../../lib/actions";
@@ -33,19 +34,52 @@ type SortDirection = "asc" | "desc";
 
 
 export default function ExplorerPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [bucketName, setBucketName] = useState<string>("");
   const [path, setPath] = useState<string[]>([]);
   const [items, setItems] = useState<UIFileItem[]>([]);
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [navigatingToFolder, setNavigatingToFolder] = useState<string | null>(null);
+
+  // Update URL when path changes
+  const updateUrl = useCallback((newPath: string[]) => {
+    const pathParam = newPath.slice(1).join("/"); // Remove bucket name from URL path
+    const params = new URLSearchParams();
+    if (pathParam) {
+      params.set("path", pathParam);
+    }
+    const paramString = params.toString();
+    const url = paramString ? `/explorer?${paramString}` : "/explorer";
+    router.replace(url);
+  }, [router]);
+
+  // Parse URL path on mount and when search params change
+  useEffect(() => {
+    const urlPath = searchParams.get("path");
+    if (bucketName && urlPath !== null) {
+      const pathSegments = urlPath ? urlPath.split("/").filter(Boolean) : [];
+      const fullPath = [bucketName, ...pathSegments];
+      setPath(fullPath);
+    }
+  }, [searchParams, bucketName]);
 
   // Fetch bucket name on mount
   useEffect(() => {
     const fetchBucketName = async () => {
       const name = await getBucketName();
       setBucketName(name);
-      setPath([name]);
+      
+      // Initialize path from URL or set to bucket root
+      const urlPath = searchParams.get("path");
+      if (urlPath) {
+        const pathSegments = urlPath.split("/").filter(Boolean);
+        setPath([name, ...pathSegments]);
+      } else {
+        setPath([name]);
+      }
     };
     fetchBucketName();
   }, []);
@@ -59,6 +93,8 @@ export default function ExplorerPage() {
       ...objects.map(f => toUiFileItem(f, "file")),
     ]);
     setSelectedItems([]);
+    // Clear navigation state when we successfully load a new path
+    setNavigatingToFolder(null);
   }, []);
 
   useEffect(() => {
@@ -110,10 +146,29 @@ export default function ExplorerPage() {
   };
 
   const handleFolderClick = (folderName: string) => {
-    setPath(prev => [...prev, folderName]);
+    // Prevent rapid successive clicks to the same folder
+    if (navigatingToFolder === folderName) {
+      return;
+    }
+    
+    // Check if we're already in a subfolder of the clicked folder
+    if (path.length > 1 && path[path.length - 1] === folderName) {
+      return;
+    }
+    
+    setNavigatingToFolder(folderName);
+    const newPath = [...path, folderName];
+    setPath(newPath);
+    updateUrl(newPath);
+    
+    // Clear the navigation state after a short delay
+    setTimeout(() => setNavigatingToFolder(null), 500);
   };
+  
   const handleBreadcrumbClick = (index: number) => {
-    setPath(prev => prev.slice(0, index + 1));
+    const newPath = path.slice(0, index + 1);
+    setPath(newPath);
+    updateUrl(newPath);
   };
   const handleItemSelect = (itemId: string) => {
     setSelectedItems(prev => prev.includes(itemId) ? prev.filter(id => id !== itemId) : [...prev, itemId]);

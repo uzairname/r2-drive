@@ -4,6 +4,7 @@ import { HardDrive, Plus } from "lucide-react";
 import { R2Breadcrumbs } from "./breadcrumbs";
 import { R2FileTable, UIFileItem, TableSortProps } from "./file-table";
 import { R2SelectionInfo } from "./selection-info";
+import { DeleteConfirmationDialog } from "./delete-confirmation-dialog";
 import { Button } from "@workspace/ui/components/button";
 import { Upload, FolderPlus } from "lucide-react";
 import { UploadProgress, UploadProgressItem } from "@workspace/ui/components/upload-progress";
@@ -59,6 +60,8 @@ export function R2BucketNavigator({
   const [uploadProgress, setUploadProgress] = React.useState<UploadProgressItem[]>([]);
   const [showUploadProgress, setShowUploadProgress] = React.useState(false);
   const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [itemsToDelete, setItemsToDelete] = useState<{ids: string[], names: string[]}>({ids: [], names: []});
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
@@ -118,13 +121,28 @@ export function R2BucketNavigator({
   const onDeleteSelected = async () => {
     if (selectedItems.length === 0) return;
     
+    const selectedItemNames = items
+      .filter(item => selectedItems.includes(item.id))
+      .map(item => item.name);
+    
+    setItemsToDelete({ids: selectedItems, names: selectedItemNames});
+    setShowDeleteDialog(true);
+  };
+
+  const onDeleteItem = async (itemId: string, itemName: string) => {
+    setItemsToDelete({ids: [itemId], names: [itemName]});
+    setShowDeleteDialog(true);
+  };
+
+  const handleConfirmDelete = async () => {
     setIsDeleting(true);
     try {
-      await handleDelete(selectedItems);
+      await handleDelete(itemsToDelete.ids);
     } catch (error) {
       console.error("Error deleting items:", error);
     } finally {
       setIsDeleting(false);
+      setItemsToDelete({ids: [], names: []});
     }
   };
 
@@ -144,19 +162,33 @@ export function R2BucketNavigator({
   return (
     <div className="flex flex-col h-screen">
       {/* Header */}
-      <header className="border-b border-border bg-card px-6 py-4">
+      <header className="border-b border-border px-6 py-4">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold text-foreground">Cloudflare R2 Drive</h1>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <HardDrive className="h-4 w-4" />
-            <span>Bucket: {bucketName}</span>
-          </div>
         </div>
       </header>
       {/* Main Content */}
       <div className="flex-1 p-6">
-        {/* Upload Actions - moved above breadcrumbs */}
-        <div className="flex justify-end mb-4">
+        {/* Breadcrumbs - now gets full width */}
+        <div className="mb-6">
+          <R2Breadcrumbs path={path} onClick={onBreadcrumbClick} />
+        </div>
+        <R2FileTable
+          items={items}
+          selectedItems={selectedItems}
+          onItemSelect={onItemSelect}
+          onSelectAll={onSelectAll}
+          onFolderClick={onFolderClick}
+          onDeleteItem={onDeleteItem}
+          tableSort={{
+            sortKey,
+            sortDirection,
+            onSort: handleSort,
+          }}
+        />
+        
+        {/* Upload Actions*/}
+        <div className="flex justify-left mt-4">
           <input
             type="file"
             ref={fileInputRef}
@@ -214,30 +246,16 @@ export function R2BucketNavigator({
             </DropdownMenu>
           </div>
         </div>
+        
 
-        {/* Breadcrumbs - now gets full width */}
-        <div className="mb-6">
-          <R2Breadcrumbs path={path} onClick={onBreadcrumbClick} />
-        </div>
-        <R2FileTable
-          items={items}
-          selectedItems={selectedItems}
-          onItemSelect={onItemSelect}
-          onSelectAll={onSelectAll}
-          onFolderClick={onFolderClick}
-          tableSort={{
-            sortKey,
-            sortDirection,
-            onSort: handleSort,
-          }}
-        />
         <R2SelectionInfo 
           count={selectedItems.length} 
-          onDelete={onDeleteSelected}
+          onDeleteClick={onDeleteSelected}
           onDownload={onDownloadSelected}
           isDeleting={isDeleting}
           isDownloading={isDownloading}
         />
+        
       </div>
       
       {/* Upload Progress Indicator */}
@@ -252,6 +270,15 @@ export function R2BucketNavigator({
         open={showCreateFolderDialog}
         onOpenChange={setShowCreateFolderDialog}
         onCreateFolder={handleCreateFolder}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        onConfirmDelete={handleConfirmDelete}
+        itemNames={itemsToDelete.names}
+        isDeleting={isDeleting}
       />
     </div>
   );

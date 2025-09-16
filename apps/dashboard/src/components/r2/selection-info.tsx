@@ -4,13 +4,13 @@ import { Trash2, Download } from "lucide-react";
 
 export interface R2SelectionInfoProps {
   count: number;
-  onDelete?: () => void;
+  onDeleteClick?: () => void;
   onDownload?: () => void;
   isDeleting?: boolean;
   isDownloading?: boolean;
 }
 
-export function R2SelectionInfo({ count, onDelete, onDownload, isDeleting, isDownloading }: R2SelectionInfoProps) {
+export function R2SelectionInfo({ count, onDeleteClick, onDownload, isDeleting, isDownloading }: R2SelectionInfoProps) {
   if (count === 0) return null;
   return (
     <div className="mt-4 p-3 bg-muted rounded-lg">
@@ -29,12 +29,13 @@ export function R2SelectionInfo({ count, onDelete, onDownload, isDeleting, isDow
               <Download className="h-4 w-4" />
             </Button>
           )}
-          {onDelete && (
+          {onDeleteClick && (
             <Button
-              variant="destructive"
+              variant="ghost"
               size="sm"
-              onClick={onDelete}
+              onClick={onDeleteClick}
               disabled={isDeleting}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
             >
               <Trash2 className="h-4 w-4" />
             </Button>

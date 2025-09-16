@@ -1,6 +1,6 @@
 import React from "react";
 import { Button } from "@workspace/ui/components/button";
-import { ChevronRight, Home, MoreHorizontal } from "lucide-react";
+import { ChevronRight, HardDrive, MoreHorizontal, Link, Check } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,7 +14,24 @@ export interface R2BreadcrumbsProps {
 }
 
 export function R2Breadcrumbs({ path, onClick }: R2BreadcrumbsProps) {
+  const [copied, setCopied] = React.useState(false);
+  
   if (!path.length) return null;
+
+  const handleCopyLink = async () => {
+    try {
+      const pathParam = path.slice(1).join("/"); // Remove bucket name from URL path
+      const url = pathParam 
+        ? `${window.location.origin}/explorer?path=${encodeURIComponent(pathParam)}`
+        : `${window.location.origin}/explorer`;
+      
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy link:", error);
+    }
+  };
 
   // Determine if we need to truncate
   const maxVisibleSegments = 4; // Show first, last, and 2 in between, or truncate if more
@@ -29,7 +46,7 @@ export function R2Breadcrumbs({ path, onClick }: R2BreadcrumbsProps) {
       <div className="flex items-center gap-2 text-sm h-10">
         {/* First segment (bucket) */}
         <Button variant="ghost" size="sm" onClick={() => onClick(0)} className="h-8 px-2">
-          <Home className="h-4 w-4 mr-1" />
+          <HardDrive className="h-4 w-4 mr-1" />
           {firstSegment}
         </Button>
         
@@ -79,7 +96,7 @@ export function R2Breadcrumbs({ path, onClick }: R2BreadcrumbsProps) {
   const renderFullBreadcrumbs = () => (
     <div className="flex items-center gap-2 text-sm h-10">
       <Button variant="ghost" size="sm" onClick={() => onClick(0)} className="h-8 px-2">
-        <Home className="h-4 w-4 mr-1" />
+        <HardDrive className="h-4 w-4 mr-1" />
         {path[0]}
       </Button>
       {path.slice(1).map((segment, index) => (
@@ -95,7 +112,22 @@ export function R2Breadcrumbs({ path, onClick }: R2BreadcrumbsProps) {
 
   return (
     <nav className="overflow-hidden">
-      {shouldTruncate ? renderTruncatedBreadcrumbs() : renderFullBreadcrumbs()}
+      <div className="flex items-center justify-between">
+        {shouldTruncate ? renderTruncatedBreadcrumbs() : renderFullBreadcrumbs()}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleCopyLink}
+          className="h-8 px-2 ml-4 flex-shrink-0"
+          title="Copy link to current path"
+        >
+          {copied ? (
+            <Check className="h-4 w-4 text-green-600" />
+          ) : (
+            <Link className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
     </nav>
   );
 }
