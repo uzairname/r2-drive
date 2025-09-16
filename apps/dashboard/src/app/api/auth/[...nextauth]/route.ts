@@ -13,27 +13,48 @@ const handler = NextAuth({
   debug: true, // Enable debug mode for detailed logging
   logger: {
     error(code, metadata) {
-      console.error('NextAuth Error:', { code, metadata })
+      console.error('NextAuth Error:', { code, metadata });
     },
     warn(code) {
-      console.warn('NextAuth Warning:', code)
+      console.warn('NextAuth Warning:', code);
     },
     debug(code, metadata) {
-      console.log('NextAuth Debug:', { code, metadata })
+      console.log('NextAuth Debug:', { code, metadata });
+    }
+  },
+  events: {
+    async signIn(message) {
+      console.log('SignIn Event:', message);
+    },
+    async signOut(message) {
+      console.log('SignOut Event:', message);
+    },
+    async createUser(message) {
+      console.log('CreateUser Event:', message);
+    },
+    async session(message) {
+      console.log('Session Event:', message);
     }
   },
   callbacks: {
     async signIn({ user, account, profile }) {
-      // Add debugging for production issues
-      console.log('NextAuth signIn callback:', {
-        user: user?.email,
-        provider: account?.provider,
-        baseUrl: process.env.NEXTAUTH_URL,
-        account: account
-      });
-      
-      // Basic sign-in logic - can be extended later
-      return true
+      try {
+        // Add debugging for production issues
+        console.log('NextAuth signIn callback:', {
+          user: user?.email,
+          provider: account?.provider,
+          accountType: account?.type,
+          baseUrl: process.env.NEXTAUTH_URL,
+          profileEmail: profile?.email,
+          timestamp: new Date().toISOString()
+        });
+        
+        // Basic sign-in logic - can be extended later
+        return true
+      } catch (error) {
+        console.error('SignIn callback error:', error);
+        return false;
+      }
     },
     async session({ session, token }) {
       // Add admin status to session from JWT token
