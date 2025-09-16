@@ -44,20 +44,15 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-      # Deploy step can be added here when ready
+      - name: Publish secrets to Cloudflare Worker
+        run: |
+          npx wrangler secret put NEXTAUTH_SECRET <<< "${{ secrets.NEXTAUTH_SECRET }}"
+          npx wrangler secret put GOOGLE_CLIENT_ID <<< "${{ secrets.GOOGLE_CLIENT_ID }}"
+          npx wrangler secret put GOOGLE_CLIENT_SECRET <<< "${{ secrets.GOOGLE_CLIENT_SECRET }}"
+          npx wrangler secret put ADMIN_EMAILS <<< "${{ secrets.ADMIN_EMAILS }}"
+
       - name: Deploy to Cloudflare
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
-          ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
-          R2_BUCKET_NAME: ${{ env.R2_BUCKET_NAME }}
-        run: |
-          echo "CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN" >> .env
-          echo "GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID" >> .env
-          echo "GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET" >> .env
-          echo "NEXTAUTH_SECRET=$NEXTAUTH_SECRET" >> .env
-          echo "ADMIN_EMAILS=$ADMIN_EMAILS" >> .env
-          echo "R2_BUCKET_NAME=$R2_BUCKET_NAME" >> .env
-          pnpm run deploy
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm run deploy
