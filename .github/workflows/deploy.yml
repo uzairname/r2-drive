@@ -54,5 +54,10 @@ jobs:
           ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
           R2_BUCKET_NAME: ${{ env.R2_BUCKET_NAME }}
         run: |
-          echo "CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN" >> $GITHUB_ENV
+          echo "CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN" >> .env
+          echo "GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID" >> .env
+          echo "GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET" >> .env
+          echo "NEXTAUTH_SECRET=$NEXTAUTH_SECRET" >> .env
+          echo "ADMIN_EMAILS=$ADMIN_EMAILS" >> .env
+          echo "R2_BUCKET_NAME=$R2_BUCKET_NAME" >> .env
           pnpm run deploy
