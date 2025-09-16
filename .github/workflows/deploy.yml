@@ -48,7 +48,6 @@ jobs:
         run: |
           cd apps/dashboard
           echo "${{ secrets.NEXTAUTH_SECRET }}" | npx wrangler secret put NEXTAUTH_SECRET
-          echo "${{ secrets.NEXTAUTH_URL }}" | npx wrangler secret put NEXTAUTH_URL
           echo "${{ secrets.GOOGLE_CLIENT_ID }}" | npx wrangler secret put GOOGLE_CLIENT_ID
           echo "${{ secrets.GOOGLE_CLIENT_SECRET }}" | npx wrangler secret put GOOGLE_CLIENT_SECRET
           echo "${{ secrets.ADMIN_EMAILS }}" | npx wrangler secret put ADMIN_EMAILS
