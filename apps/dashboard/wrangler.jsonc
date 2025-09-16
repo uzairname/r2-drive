@@ -13,7 +13,7 @@
 		"global_fetch_strictly_public"
 	],
 	// Uncomment if you want to specify a custom domain
-	// "route": { "pattern": "your-domain.com/*", "custom_domain": true },
+	"route": { "pattern": "files.uzair.me", "custom_domain": true },
 	"assets": {
 		"binding": "ASSETS",
 		"directory": ".open-next/assets"
@@ -34,6 +34,7 @@
 	"vars": {
     "R2_BUCKET_NAME": "files",
 		"ENABLE_AUTH": "true",
-		"ALLOWED_ORIGINS": "*"
+		"ALLOWED_ORIGINS": "*",
+		"NEXTAUTH_URL": "https://files.uzair.me"
 	},
 }

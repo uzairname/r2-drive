@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { listFiles, createFolder, getBucketName } from "../../lib/actions";
 import { R2BucketNavigator } from "@/components/r2/file-navigator";
@@ -32,8 +32,7 @@ function toUiFileItem(item: FileItem, type: "file" | "folder"): UIFileItem {
 type SortKey = "name" | "size" | "lastModified";
 type SortDirection = "asc" | "desc";
 
-
-export default function ExplorerPage() {
+function ExplorerContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [bucketName, setBucketName] = useState<string>("");
@@ -300,5 +299,19 @@ export default function ExplorerPage() {
         />
       </div>
     </div>
+  );
+}
+
+export default function ExplorerPage() {
+  return (
+    <Suspense fallback={
+      <div className="p-6 max-w-3xl mx-auto">
+        <div className="mt-6 text-center">
+          <div className="animate-pulse">Loading...</div>
+        </div>
+      </div>
+    }>
+      <ExplorerContent />
+    </Suspense>
   );
 }

@@ -35,9 +35,6 @@ const handler = NextAuth({
       
       return token
     }
-  },
-  pages: {
-    signIn: '/auth/signin', // Optional custom sign-in page
   }
 })
 
