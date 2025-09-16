@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -59,8 +59,8 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           cd apps/dashboard
-          npx wrangler r2 bucket create files --location auto || echo "Bucket 'files' already exists"
-          npx wrangler r2 bucket create r2explorer-next-cache --location auto || echo "Bucket 'r2explorer-next-cache' already exists"
+          npx wrangler r2 bucket create files || echo "Bucket 'files' already exists"
+          npx wrangler r2 bucket create r2explorer-next-cache || echo "Bucket 'r2explorer-next-cache' already exists"
           cd ../..
 
       - name: Deploy to Cloudflare
