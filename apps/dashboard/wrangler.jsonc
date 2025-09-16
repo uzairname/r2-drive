@@ -34,7 +34,6 @@
 	"vars": {
     "R2_BUCKET_NAME": "files",
 		"ENABLE_AUTH": "true",
-		"ALLOWED_ORIGINS": "*",
-		"NEXTAUTH_URL": "https://files.uzair.me"
+		"ALLOWED_ORIGINS": "*"
 	},
 }
