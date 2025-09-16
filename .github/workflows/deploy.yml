@@ -47,7 +47,7 @@ jobs:
       - name: Publish secrets to Cloudflare Worker
         env: 
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets. CLOUDFLARE_ACCOUNT_ID }}
         run: |
           cd apps/dashboard
           echo "${{ secrets.NEXTAUTH_SECRET }}" | npx wrangler secret put NEXTAUTH_SECRET
