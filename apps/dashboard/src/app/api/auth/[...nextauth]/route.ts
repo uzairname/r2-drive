@@ -10,13 +10,26 @@ const handler = NextAuth({
     })
   ],
   secret: process.env.NEXTAUTH_SECRET,
+  debug: true, // Enable debug mode for detailed logging
+  logger: {
+    error(code, metadata) {
+      console.error('NextAuth Error:', { code, metadata })
+    },
+    warn(code) {
+      console.warn('NextAuth Warning:', code)
+    },
+    debug(code, metadata) {
+      console.log('NextAuth Debug:', { code, metadata })
+    }
+  },
   callbacks: {
     async signIn({ user, account, profile }) {
       // Add debugging for production issues
       console.log('NextAuth signIn callback:', {
         user: user?.email,
         provider: account?.provider,
-        baseUrl: process.env.NEXTAUTH_URL
+        baseUrl: process.env.NEXTAUTH_URL,
+        account: account
       });
       
       // Basic sign-in logic - can be extended later
