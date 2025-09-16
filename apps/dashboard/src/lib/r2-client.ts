@@ -1,4 +1,8 @@
-
+import { UPLOAD_CONFIG } from "@/config/app-config";
+import { UploadResult } from "@/types/upload";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { revalidatePath } from "next/cache";
+import type { Result } from "./result";
 
 // Represents file/folder structure
 export interface FileItem {
@@ -24,15 +28,23 @@ interface R2ListResult {
   cursor?: string;
 }
 
+export interface ListFilesResult {
+  objects: FileItem[];
+  folders: FileItem[];
+  path: string;
+  error?: string;
+}
+
 export class R2Client {
   private r2: R2Bucket;
 
-  constructor(env: CloudflareEnv) {
+  constructor() {
+    const { env } = getCloudflareContext();
     this.r2 = env.FILES;
   }
 
   /**
-   * Internal method to list R2 objects with pagination support
+   * Lists all objects with the given prefix
    */
   private async listR2Objects(
     prefix = "",
@@ -53,10 +65,10 @@ export class R2Client {
       };
 
       const listing = await this.r2.list(options);
-      
+
       allObjects.push(...listing.objects);
       allDelimitedPrefixes.push(...listing.delimitedPrefixes);
-      
+
       hasMore = listing.truncated && getAllResults;
       if (hasMore && 'cursor' in listing) {
         cursor = listing.cursor;
@@ -79,7 +91,7 @@ export class R2Client {
   /**
    * List objects in the bucket with an optional prefix and delimiter
    */
-  async listObjects(
+  private async listObjects(
     prefix = "",
     delimiter = "/"
   ): Promise<R2ListResult> {
@@ -90,7 +102,7 @@ export class R2Client {
         objects: result.objects.map(o => ({ key: o.key, size: o.size })),
         delimitedPrefixes: result.delimitedPrefixes
       });
-      
+
       const regularObjects = result.objects.filter((obj) => !(obj.key.endsWith("/") && obj.size === 0));
 
       const objects = regularObjects.map((obj) => ({
@@ -126,8 +138,33 @@ export class R2Client {
     }
   }
 
+  async listFiles(path = ""): Promise<ListFilesResult> {
+    try {
+
+      let normalizedPath = path.startsWith("/") ? path.substring(1) : path;
+      if (normalizedPath && !normalizedPath.endsWith("/")) {
+        normalizedPath += "/";
+      }
+      const result = await this.listObjects(normalizedPath, "/");
+      return {
+        objects: result.objects,
+        folders: result.folders,
+        path: normalizedPath,
+      };
+    } catch (error) {
+
+      console.error("Error listing files:", error);
+      return {
+        objects: [],
+        folders: [],
+        path,
+        error: `Failed to list files: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  }
+
   /**
-   * Get an object from the bucket
+   * Get an object from the bucket with the specified key
    */
   async getObject(key: string): Promise<R2ObjectBody | null> {
     try {
@@ -138,11 +175,49 @@ export class R2Client {
     }
   }
 
+  async uploadObject(
+    path: string,
+    file: File,
+  ): Promise<UploadResult> {
+
+    try {
+
+      const key = path;
+
+      const arrayBuffer = await file.arrayBuffer();
+      const isLargeFile = arrayBuffer.byteLength > UPLOAD_CONFIG.LARGE_FILE_THRESHOLD;
+      // Report initial progress
+
+      if (isLargeFile) {
+        // Use multipart upload for large files
+        await this.putObjectMultipart(key, arrayBuffer);
+      } else {
+        // Use regular upload for smaller files
+        await this.putObject(key, arrayBuffer);
+      }
+
+      return {
+        success: true,
+        fileName: file.name
+      };
+    } catch (error) {
+      console.error(`Error uploading file ${file.name}:`, error);
+      return {
+        success: false,
+        fileName: file.name,
+        error
+      };
+
+    }
+  }
+
+
+
   /**
    * Upload an object to the bucket (optimized for size)
    */
   async putObject(
-    key: string, 
+    key: string,
     data: ReadableStream | ArrayBuffer | string,
     onProgress?: (progress: { uploaded: number; total: number }) => void
   ): Promise<R2Object | null> {
@@ -151,18 +226,18 @@ export class R2Client {
       if (data instanceof ArrayBuffer && data.byteLength > 50 * 1024 * 1024) { // 50MB threshold
         return await this.putObjectMultipart(key, data);
       }
-      
+
       // For smaller files, simulate progress since R2 doesn't provide upload progress
       if (onProgress && data instanceof ArrayBuffer) {
         const totalSize = data.byteLength;
         onProgress({ uploaded: 0, total: totalSize });
-        
+
         const result = await this.r2.put(key, data);
-        
+
         onProgress({ uploaded: totalSize, total: totalSize });
         return result;
       }
-      
+
       return await this.r2.put(key, data);
     } catch (error) {
       console.error(`Error uploading object ${key}:`, error);
@@ -174,7 +249,7 @@ export class R2Client {
    * Upload large objects using multipart upload
    */
   async putObjectMultipart(
-    key: string, 
+    key: string,
     data: ArrayBuffer,
   ): Promise<R2Object | null> {
     try {
@@ -185,7 +260,7 @@ export class R2Client {
       // Create multipart upload
       const multipartUpload = await this.r2.createMultipartUpload(key);
       const uploadId = multipartUpload.uploadId;
-      
+
       const parts: R2UploadedPart[] = [];
       let uploadedBytes = 0;
 
@@ -221,30 +296,85 @@ export class R2Client {
   /**
    * Delete an object from the bucket
    */
-  async deleteObject(key: string): Promise<void> {
-    try {
-      await this.r2.delete(key);
-    } catch (error) {
-      console.error(`Error deleting object ${key}:`, error);
-      throw new Error(`Failed to delete object: ${error instanceof Error ? error.message : String(error)}`);
-    }
+  async deleteObject(key: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    await this.r2.delete(key);
+    return { success: true };
+  } catch (error) {
+    console.error(`Error deleting object ${key}:`, error);
+    return {
+      success: false,
+      error: `Failed to delete object: ${error instanceof Error ? error.message : String(error)}`
+    };
   }
+}
 
   /**
    * List the keys of all objects with a given prefix
    */
   async listObjectKeys(prefix: string): Promise<string[]> {
     const result = await this.listR2Objects(prefix, undefined, true);
-    return result.objects.map(obj => obj.key);    
+    return result.objects.map(obj => obj.key);
   }
+
+  /**
+   * Delete multiple files or folders from the bucket
+   */
+  async deleteObjects(keys: string[]): Promise<{ success: boolean; errors?: string[] }> {
+    const errors: string[] = [];
+
+    try {
+
+      // Separate folders from files
+      const folders = keys.filter(key => key.endsWith('/'));
+      const files = keys.filter(key => !key.endsWith('/'));
+
+      // Delete files directly
+      if (files.length > 0) {
+        try {
+          await this._deleteObjects(files);
+        } catch (error) {
+          const errorMessage = `Failed to delete files: ${error instanceof Error ? error.message : String(error)}`;
+          console.error(errorMessage);
+          errors.push(errorMessage);
+        }
+      }
+
+      // Delete folders by deleting all objects with that prefix
+      for (const folderKey of folders) {
+        try {
+          const objectsInFolder = await this.listObjectKeys(folderKey);
+          if (objectsInFolder.length > 0) {
+            await this._deleteObjects(objectsInFolder);
+          }
+        } catch (error) {
+          const errorMessage = `Failed to delete folder ${folderKey}: ${error instanceof Error ? error.message : String(error)}`;
+          console.error(errorMessage);
+          errors.push(errorMessage);
+        }
+      }
+
+      return {
+        success: errors.length === 0,
+        errors: errors.length > 0 ? errors : undefined
+      };
+    } catch (error) {
+      console.error(`Error deleting objects:`, error);
+      return {
+        success: false,
+        errors: [`Failed to delete objects: ${error instanceof Error ? error.message : String(error)}`]
+      };
+    }
+  }
+
 
   /**
    * Delete multiple objects from the bucket
    */
-  async deleteObjects(keys: string[]): Promise<void> {
+  private async _deleteObjects(keys: string[]): Promise<void> {
     // R2 delete method can handle arrays for bulk deletion
     if (keys.length === 0) return;
-    
+
     // Delete in batches if we have too many keys
     const batchSize = 1000; // R2 limit for bulk operations
     for (let i = 0; i < keys.length; i += batchSize) {
@@ -257,18 +387,52 @@ export class R2Client {
    * Create a folder by uploading an empty object with the folder name as the key
    * Ending with a trailing slash to indicate it's a folder
    */
-  async createFolder(key: string): Promise<R2Object | null> {
-    // Ensure the key ends with a trailing slash
-    const folderKey = key.endsWith("/") ? key : `${key}/`;
-    
-    return await this.r2.put(folderKey, "");
+  async createFolder(
+    basePath: string,
+    folderName: string): Promise<{ success: boolean; errorMessage?: string }> {
 
+    try {
+      // Validate folder name
+      if (!folderName || !folderName.trim()) {
+        return { success: false, errorMessage: "Folder name cannot be empty" };
+      }
+
+      // Remove invalid characters
+      const sanitizedName = folderName.trim().replace(/[<>:"/\\|?*]/g, "");
+      if (sanitizedName !== folderName.trim()) {
+        return { success: false, errorMessage: "Folder name contains invalid characters" };
+      }
+
+      // Construct full folder path
+      // Normalize the current path (remove leading/trailing slashes)
+      let normalizedPath = basePath.startsWith("/") ? basePath.substring(1) : basePath;
+      if (normalizedPath.endsWith("/")) {
+        normalizedPath = normalizedPath.slice(0, -1);
+      }
+
+      const folderPath = normalizedPath ? `${normalizedPath}/${sanitizedName}` : sanitizedName;
+
+      // Ensure the key ends with a trailing slash
+      const folderKey = folderPath.endsWith("/") ? folderPath : `${folderPath}/`;
+      await this.r2.put(folderKey, "");
+
+      // Revalidate the current path to refresh the UI
+      const revalidationPath = normalizedPath ? `/${normalizedPath}` : "/";
+      revalidatePath(revalidationPath);
+      return { success: true };
+    } catch (error) {
+      console.error(`Error creating folder:`, error);
+      return {
+        success: false,
+        errorMessage: error instanceof Error ? error.message : String(error)
+      };
+    }
   }
 
   /**
    * Initiate a multipart upload for presigned URL approach
    */
-  async initiateMultipartUpload(key: string, options?: R2PutOptions): Promise<R2MultipartUpload> {
+  async createMultipartUpload(key: string, options?: R2PutOptions): Promise<R2MultipartUpload> {
     return await this.r2.createMultipartUpload(key, options);
   }
 
@@ -285,7 +449,7 @@ export class R2Client {
    * Abort a multipart upload
    */
   async abortMultipartUpload(uploadId: string, key: string): Promise<void> {
-      const multipartUpload = this.r2.resumeMultipartUpload(key, uploadId);
-      await multipartUpload.abort();
+    const multipartUpload = this.r2.resumeMultipartUpload(key, uploadId);
+    await multipartUpload.abort();
   }
 }

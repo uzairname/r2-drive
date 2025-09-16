@@ -6,7 +6,7 @@ import { listFiles, createFolder, getBucketName } from "../../lib/actions";
 import { R2BucketNavigator } from "@/components/r2/file-navigator";
 import { deleteObjects } from "../../lib/actions";
 import { UploadManager } from "../../lib/upload-utils";
-import { FileItem } from "../../lib/r2-client";
+import { FileItem, R2Client } from "../../lib/r2-client";
 import type { UIFileItem } from "@/components/r2/file-table";
 import type { UploadProgressItem } from "@workspace/ui/components/upload-progress";
 

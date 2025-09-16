@@ -1,219 +1,66 @@
 
 "use server";
 
-import { R2Client, FileItem } from "@/lib/r2-client";
-import { revalidatePath } from "next/cache";
+import { R2Client, ListFilesResult } from "@/lib/r2-client";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { UploadResult, UPLOAD_CONFIG } from "@/types/upload";
+import { UploadResult } from "@/types/upload";
+import { withAdminProtection } from "@/lib/auth";
 
-interface ListFilesResult {
-  objects: FileItem[];
-  folders: FileItem[];
-  path: string;
-  error?: string;
-}
+// Functions that can be used from client components
 
 /**
  * Upload an object to R2 with automatic multipart for large files
  */
-export async function uploadObject(
+async function _uploadObject(
   path: string,
   file: File,
 ): Promise<UploadResult> {
-
-  console.log("Uploading file:", file.name, "to path:", path);
-
-  try {
-    const client = new R2Client(getCloudflareContext().env);
-
-    // Path now contains the complete upload path (including webkitRelativePath if applicable)
-    const key = path;
-
-    const arrayBuffer = await file.arrayBuffer();
-    const isLargeFile = arrayBuffer.byteLength > UPLOAD_CONFIG.LARGE_FILE_THRESHOLD;
-    // Report initial progress
-
-    if (isLargeFile) {
-      // Use multipart upload for large files
-      await client.putObjectMultipart(key, arrayBuffer);
-    } else {
-      // Use regular upload for smaller files
-      await client.putObject(key, arrayBuffer);
-    }
-
-    revalidatePath(path ? `/${path}` : "/");
-    return {
-      success: true,
-      fileName: file.name
-    };
-  } catch (error) {
-    console.error(`Error uploading file ${file.name}:`, error);
-    return {
-      success: false,
-      fileName: file.name,
-      error
-    };
-
-  }
+  const client = new R2Client();
+  return await client.uploadObject(path, file);
 }
+
+export const uploadObject = withAdminProtection(_uploadObject);
 
 /**
  * List files and folders in a path
  */
 export async function listFiles(path = ""): Promise<ListFilesResult> {
-  try {
-    // Normalize path: remove leading slash, add trailing slash for non-root paths
-    let normalizedPath = path.startsWith("/") ? path.substring(1) : path;
-    if (normalizedPath && !normalizedPath.endsWith("/")) {
-      normalizedPath += "/";
-    }
-
-    // Initialize R2 client with Cloudflare context
-    const client = new R2Client(getCloudflareContext().env);
-
-    // List objects with prefix and delimiter
-    const result = await client.listObjects(normalizedPath, "/");
-
-    return {
-      objects: result.objects,
-      folders: result.folders,
-      path: normalizedPath,
-    };
-  } catch (error) {
-    console.error("Error listing files:", error);
-    return {
-      objects: [],
-      folders: [],
-      path,
-      error: `Failed to list files: ${error instanceof Error ? error.message : String(error)}`,
-    };
-  }
+  const client = new R2Client();
+  return await client.listFiles(path);
 }
 
 /**
  * Create a folder in R2
  */
-export async function createFolder(
-  path: string,
+async function _createFolder(
+  basePath: string,
   folderName: string,
 ): Promise<{ success: boolean; errorMessage?: string }> {
-  try {
-    // Validate folder name
-    if (!folderName || !folderName.trim()) {
-      return { success: false, errorMessage: "Folder name cannot be empty" };
-    }
-
-    // Remove invalid characters
-    const sanitizedName = folderName.trim().replace(/[<>:"/\\|?*]/g, "");
-    if (sanitizedName !== folderName.trim()) {
-      return { success: false, errorMessage: "Folder name contains invalid characters" };
-    }
-
-    // Construct full folder path
-    // Normalize the current path (remove leading/trailing slashes)
-    let normalizedPath = path.startsWith("/") ? path.substring(1) : path;
-    if (normalizedPath.endsWith("/")) {
-      normalizedPath = normalizedPath.slice(0, -1);
-    }
-    
-    const folderPath = normalizedPath ? `${normalizedPath}/${sanitizedName}` : sanitizedName;
-
-    const client = new R2Client(getCloudflareContext().env);
-    await client.createFolder(folderPath);
-
-    // Revalidate the current path to refresh the UI
-    const revalidationPath = normalizedPath ? `/${normalizedPath}` : "/";
-    revalidatePath(revalidationPath);
-    return { success: true };
-  } catch (error) {
-    console.error(`Error creating folder:`, error);
-    return {
-      success: false,
-      errorMessage: error instanceof Error ? error.message : String(error)
-    };
-  }
+  const client = new R2Client();
+  return await client.createFolder(basePath, folderName);
 }
+
+export const createFolder = withAdminProtection(_createFolder);
 
 /**
  * Delete an object from R2
  */
-export async function deleteObject(key: string): Promise<{ success: boolean; error?: string }> {
-  try {
-    const client = new R2Client(getCloudflareContext().env);
-    await client.deleteObject(key);
-
-    // Revalidate the path to update the UI
-    const path = key.includes("/") ? `/${key.split("/").slice(0, -1).join("/")}` : "/";
-    revalidatePath(path);
-
-    return { success: true };
-  } catch (error) {
-    console.error(`Error deleting object ${key}:`, error);
-    return {
-      success: false,
-      error: `Failed to delete object: ${error instanceof Error ? error.message : String(error)}`
-    };
-  }
+async function _deleteObject(key: string): Promise<{ success: boolean; error?: string }> {
+  const client = new R2Client();
+  return await client.deleteObject(key);
 }
+
+export const deleteObject = withAdminProtection(_deleteObject);
 
 /**
  * Delete multiple objects from R2
  */
-export async function deleteObjects(keys: string[]): Promise<{ success: boolean; errors?: string[] }> {
-  const errors: string[] = [];
-
-  try {
-    const client = new R2Client(getCloudflareContext().env);
-
-    // Separate folders from files
-    const folders = keys.filter(key => key.endsWith('/'));
-    const files = keys.filter(key => !key.endsWith('/'));
-
-    // Delete files directly
-    if (files.length > 0) {
-      try {
-        await client.deleteObjects(files);
-      } catch (error) {
-        const errorMessage = `Failed to delete files: ${error instanceof Error ? error.message : String(error)}`;
-        console.error(errorMessage);
-        errors.push(errorMessage);
-      }
-    }
-
-    // Delete folders by deleting all objects with that prefix
-    for (const folderKey of folders) {
-      try {
-        const objectsInFolder = await client.listObjectKeys(folderKey);
-        if (objectsInFolder.length > 0) {
-          await client.deleteObjects(objectsInFolder);
-        }
-      } catch (error) {
-        const errorMessage = `Failed to delete folder ${folderKey}: ${error instanceof Error ? error.message : String(error)}`;
-        console.error(errorMessage);
-        errors.push(errorMessage);
-      }
-    }
-
-    // Revalidate the path to update the UI
-    // Use the first key to determine the path
-    if (keys.length > 0) {
-      const firstKey = keys[0]!;
-      const path = firstKey.includes("/") ? `/${firstKey.split("/").slice(0, -1).join("/")}` : "/";
-      revalidatePath(path);
-    }
-
-    return {
-      success: errors.length === 0,
-      errors: errors.length > 0 ? errors : undefined
-    };
-  } catch (error) {
-    console.error(`Error deleting objects:`, error);
-    return {
-      success: false,
-      errors: [`Failed to delete objects: ${error instanceof Error ? error.message : String(error)}`]
-    };
-  }
+async function _deleteObjects(keys: string[]): Promise<{ success: boolean; errors?: string[] }> {
+  const client = new R2Client();
+  return await client.deleteObjects(keys);
 }
+
+export const deleteObjects = withAdminProtection(_deleteObjects);
 
 /**
  * Get the R2 bucket name from Cloudflare environment

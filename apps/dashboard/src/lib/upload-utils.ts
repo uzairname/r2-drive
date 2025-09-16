@@ -2,7 +2,8 @@
 
 import { uploadObject } from "./actions";
 import type { UploadProgressItem } from "@workspace/ui/components/upload-progress";
-import { UploadResult, UploadOptions, UPLOAD_CONFIG } from "@/types/upload";
+import { UploadResult, UploadOptions } from "@/types/upload";
+import { UPLOAD_CONFIG } from "@/config/app-config";
 import { MultipartUploader, type MultipartUploadProgress } from "./multipart-uploader";
 
 /**

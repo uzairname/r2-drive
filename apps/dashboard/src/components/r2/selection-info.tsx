@@ -1,6 +1,7 @@
 import React from "react";
 import { Button } from "@workspace/ui/components/button";
 import { Trash2, Download } from "lucide-react";
+import { AdminOnly } from "@/hooks/use-admin";
 
 export interface R2SelectionInfoProps {
   count: number;
@@ -29,17 +30,19 @@ export function R2SelectionInfo({ count, onDeleteClick, onDownload, isDeleting, 
               <Download className="h-4 w-4" />
             </Button>
           )}
-          {onDeleteClick && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onDeleteClick}
-              disabled={isDeleting}
-              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          )}
+          <AdminOnly>
+            {onDeleteClick && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onDeleteClick}
+                disabled={isDeleting}
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </AdminOnly>
         </div>
       </div>
     </div>

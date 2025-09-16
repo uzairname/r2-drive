@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { R2Client } from "@/lib/r2-client";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { withAdminAPIProtection } from "@/lib/api-middleware";
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { uploadId, key, parts } = body as { 
@@ -28,8 +29,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const client = new R2Client(getCloudflareContext().env);
-    
+    const client = new R2Client();
     // Complete the multipart upload
     const result = await client.completeMultipartUpload(uploadId, key, parts);
 
@@ -47,3 +47,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = withAdminAPIProtection(_POST);

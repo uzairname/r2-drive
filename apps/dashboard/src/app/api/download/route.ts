@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Missing key parameter" }, { status: 400 });
     }
 
-    const client = new R2Client(getCloudflareContext().env);
+    const client = new R2Client();
     const object = await client.getObject(key);
     
     if (!object) {

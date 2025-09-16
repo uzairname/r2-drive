@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { withAdminAPIProtection } from "@/lib/api-middleware";
 
-export async function PUT(request: NextRequest) {
+async function _PUT(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const uploadId = searchParams.get("uploadId");
@@ -52,3 +53,5 @@ export async function PUT(request: NextRequest) {
     );
   }
 }
+
+export const PUT = withAdminAPIProtection(_PUT);

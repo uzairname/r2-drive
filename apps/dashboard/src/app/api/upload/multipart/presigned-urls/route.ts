@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { withAdminAPIProtection } from "@/lib/api-middleware";
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
 
   const env = getCloudflareContext().env;
 
@@ -53,3 +54,5 @@ export async function POST(request: NextRequest) {
     // );
   }
 }
+
+export const POST = withAdminAPIProtection(_POST);

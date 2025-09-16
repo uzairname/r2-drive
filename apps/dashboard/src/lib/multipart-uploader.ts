@@ -6,7 +6,7 @@ import type {
   MultipartUploadResult,
   PresignedUrlInfo 
 } from "@/types/upload";
-import { UPLOAD_CONFIG } from "@/types/upload";
+import { UPLOAD_CONFIG } from "@/config/app-config";
 
 export interface MultipartUploadProgress {
   fileName: string;
