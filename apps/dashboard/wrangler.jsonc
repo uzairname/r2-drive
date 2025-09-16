@@ -7,7 +7,7 @@
 	"name": "r2-drive",
 	"main": ".open-next/worker.js",
 	"workers_dev": true,
-	"compatibility_date": "2025-03-01",
+	"compatibility_date": "2025-08-20",
 	"compatibility_flags": [
 		"nodejs_compat",
 		"global_fetch_strictly_public"
@@ -35,6 +35,7 @@
     "R2_BUCKET_NAME": "files",
 		"ENABLE_AUTH": "true",
 		"ALLOWED_ORIGINS": "*",
-    "NEXTAUTH_URL": "https://files.uzair.me"
+    "NEXTAUTH_URL": "https://files.uzair.me",
+    "NODE_ENV": "production"
 	},
 }

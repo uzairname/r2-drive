@@ -28,9 +28,6 @@ export function SignInDialog({
   onGoogleSignIn,
   isLoading = false,
 }: SignInDialogProps) {
-  const handleGoogleSignIn = () => {
-    onGoogleSignIn?.();
-  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -49,7 +46,7 @@ export function SignInDialog({
 
         <div className="space-y-4 py-2">
               <Button
-                onClick={handleGoogleSignIn}
+                onClick={onGoogleSignIn}
                 disabled={isLoading}
                 className="w-full h-12 text-base font-medium"
                 variant="outline"

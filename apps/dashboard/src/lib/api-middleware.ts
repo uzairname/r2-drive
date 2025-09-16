@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
-import { isUserAdmin } from "./auth";
+import { isUserAdmin } from "./auth-helpers";
 
 /**
  * API route middleware to check if the current user is an admin

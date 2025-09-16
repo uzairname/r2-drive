@@ -4,7 +4,7 @@
 import { R2Client, ListFilesResult } from "@/lib/r2-client";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { UploadResult } from "@/types/upload";
-import { withAdminProtection } from "@/lib/auth";
+import { withAdminProtection } from "./auth-helpers";
 
 // Functions that can be used from client components
 
