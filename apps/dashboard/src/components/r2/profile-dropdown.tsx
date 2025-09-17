@@ -19,31 +19,27 @@ import { SignInDialog } from "./sign-in-dialog";
 export interface ProfileDropdownProps {
   /** Callback for settings action */
   onSettings?: () => void;
-  /** Callback for help action */
-  onHelp?: () => void;
 }
 
 export function ProfileDropdown({
   onSettings,
-  onHelp,
 }: ProfileDropdownProps = {}) {
   const { data: session, status } = useSession();
   const [showSignInDialog, setShowSignInDialog] = useState(false);
 
   const isLoggedIn = !!session;
-  const userName = session?.user?.name || "Guest User";
-  const userEmail = session?.user?.email || "guest@example.com";
+  const userName = session?.user?.name;
+  const userEmail = session?.user?.email;
   const avatarUrl = session?.user?.image;
-  // const isAdmin = session?.user?.isAdmin || false;
-  const isAdmin = false;
+  const isAdmin = !!session?.user?.isAdmin;
 
   // Generate initials from userName for fallback
-  const initials = userName
+  const initials = userName ? userName
     .split(" ")
     .map((name) => name[0])
     .join("")
     .toUpperCase()
-    .slice(0, 2);
+    .slice(0, 2) : null;
 
   const handleLogin = () => {
     setShowSignInDialog(true);
@@ -73,21 +69,13 @@ export function ProfileDropdown({
     await signOut({ callbackUrl: '/' });
   };
 
-  const handleSettings = () => {
-    onSettings?.();
-  };
-
-  const handleHelp = () => {
-    onHelp?.();
-  };
-
   return (
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-9 w-9 rounded-full p-0">
             <Avatar className="h-9 w-9">
-              {avatarUrl && <AvatarImage src={avatarUrl} alt={userName} />}
+              {avatarUrl && <AvatarImage src={avatarUrl} alt={userName ?? "User Avatar"} />}
               <AvatarFallback className="bg-primary/10 text-primary">
                 {isLoggedIn ? initials : <User className="h-4 w-4" />}
               </AvatarFallback>
@@ -114,7 +102,7 @@ export function ProfileDropdown({
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleSettings} className="cursor-pointer">
+            <DropdownMenuItem onClick={onSettings} className="cursor-pointer">
               <Settings className="mr-2 h-4 w-4" />
               <span>Settings</span>
             </DropdownMenuItem>

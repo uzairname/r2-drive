@@ -176,8 +176,6 @@ export function R2BucketNavigator({
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold text-foreground">Cloudflare R2 Drive</h1>
           <ProfileDropdown
-            onSettings={() => console.log('Settings clicked')}
-            onHelp={() => console.log('Help clicked')}
           />
         </div>
       </header>

@@ -9,7 +9,7 @@ import { useSession } from "next-auth/react";
 export function useIsAdmin() {
   const { data: session, status } = useSession();
   return {
-    isAdmin: session?.user?.isAdmin ?? false,
+    isAdmin: !!session?.user?.isAdmin,
     isLoading: status === "loading",
     isAuthenticated: status === "authenticated",
     session
