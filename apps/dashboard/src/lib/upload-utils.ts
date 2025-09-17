@@ -2,7 +2,7 @@
 
 import { uploadObject } from "./actions";
 import type { UploadProgressItem } from "@workspace/ui/components/upload-progress";
-import { UploadResult, UploadOptions } from "@/types/upload";
+import { UploadData, UploadOptions, UploadResult } from "@/types/upload";
 import { UPLOAD_CONFIG } from "@/config/app-config";
 import { MultipartUploader, type MultipartUploadProgress } from "./multipart-uploader";
 
@@ -87,7 +87,7 @@ export class UploadManager {
 
   async uploadMultipleFiles(path: string, files: File[]): Promise<UploadResult[]> {
     const results: UploadResult[] = [];
-    
+
     // Separate files by upload method
     const regularFiles = files.filter(file => file.size <= UPLOAD_CONFIG.MULTIPART_THRESHOLD);
     const multipartFiles = files.filter(file => file.size > UPLOAD_CONFIG.MULTIPART_THRESHOLD);

@@ -46,7 +46,7 @@ export interface R2FileTableProps {
   selectedItems: string[];
   onItemSelect: (itemId: string) => void;
   onSelectAll: () => void;
-  onFolderClick: (folderName: string) => void;
+  onFolderClick: (folderId: string) => void;
   onDeleteItem?: (itemId: string, itemName: string) => void;
   onDownloadItem?: (itemId: string, itemName: string) => void;
   tableSort?: TableSortProps;
@@ -82,7 +82,7 @@ export function R2FileTable({ items, selectedItems, onItemSelect, onSelectAll, o
             <TableRow
               key={item.id}
               className="border-b border-border hover:bg-muted/50 cursor-pointer group"
-              onClick={() => item.type === "folder" && onFolderClick(item.name)}
+              onClick={() => item.type === "folder" && onFolderClick(item.id)}
             >
               <TableCell>
                 <Checkbox

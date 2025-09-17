@@ -12,8 +12,14 @@ export async function GET(request: NextRequest) {
     }
 
     const client = new R2Client();
-    const object = await client.getObject(key);
+    const result = await client.getObject(key);
     
+    if (!result.success) {
+      console.error("Error getting object:", result.error);
+      return NextResponse.json({ error: "Failed to get file" }, { status: 500 });
+    }
+    
+    const object = result.data;
     if (!object) {
       return NextResponse.json({ error: "File not found" }, { status: 404 });
     }

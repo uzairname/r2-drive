@@ -1,65 +1,8 @@
 
 import NextAuth from "next-auth"
 import Google from "next-auth/providers/google"
-
-import { getCloudflareContext } from "@opennextjs/cloudflare";
-
-// // Helper function to get environment variables with validation
-// function getAuthEnvVars() {
-
-//   const getSecret = () => {
-//     const secret = process.env.NEXTAUTH_SECRET ?? (() => {
-//       console.log("[AUTH] Using Cloudflare environment for NextAuth Secret");
-//       const { env } = getCloudflareContext();
-//       return env.NEXTAUTH_SECRET;
-//     })();
-    
-//     if (!secret) {
-//       console.error("[AUTH ERROR] NEXTAUTH_SECRET is not configured");
-//       throw new Error("NEXTAUTH_SECRET is required for OAuth to work");
-//     }
-//     return secret;
-//   };
-
-//   const getGoogleClientId = () => {
-//     const clientId = process.env.GOOGLE_CLIENT_ID ?? (() => {
-//       const { env } = getCloudflareContext();
-//       console.log("[AUTH] Using Cloudflare environment for Google Client ID");
-//       return env.GOOGLE_CLIENT_ID;
-//     })();
-    
-//     if (!clientId) {
-//       console.error("[AUTH ERROR] GOOGLE_CLIENT_ID is not configured");
-//       throw new Error("GOOGLE_CLIENT_ID is required for Google OAuth");
-//     }
-//     return clientId;
-//   };
-
-//   const getGoogleClientSecret = () => {
-//     const clientSecret = process.env.GOOGLE_CLIENT_SECRET ?? (() => {
-//       const { env } = getCloudflareContext();
-//       console.log("[AUTH] Using Cloudflare environment for Google Client Secret");
-//       return env.GOOGLE_CLIENT_SECRET;
-//     })();
-    
-//     if (!clientSecret) {
-//       console.error("[AUTH ERROR] GOOGLE_CLIENT_SECRET is not configured");
-//       throw new Error("GOOGLE_CLIENT_SECRET is required for Google OAuth");
-//     }
-//     return clientSecret;
-//   };
-
-//   return {
-//     secret: getSecret(),
-//     googleClientId: getGoogleClientId(),
-//     googleClientSecret: getGoogleClientSecret()
-//   };
-// }
-
-// const authConfig = getAuthEnvVars();
-
-
 import { isUserAdmin } from "@/lib/auth-helpers";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 export const { handlers, signIn, signOut, auth } = NextAuth((req) => {
 

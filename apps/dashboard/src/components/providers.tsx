@@ -3,6 +3,7 @@
 import * as React from "react"
 import { ThemeProvider as NextThemesProvider } from "next-themes"
 import { SessionProvider } from "next-auth/react"
+import { ToastProvider } from "@workspace/ui/components/toast"
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -14,7 +15,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
         disableTransitionOnChange
         enableColorScheme
       >
-        {children}
+        <ToastProvider>
+          {children}
+        </ToastProvider>
       </NextThemesProvider>
     </SessionProvider>
   )

@@ -7,6 +7,7 @@ import type {
   PresignedUrlInfo 
 } from "@/types/upload";
 import { UPLOAD_CONFIG } from "@/config/app-config";
+import { err, makeError, ok } from "./result";
 
 export interface MultipartUploadProgress {
   fileName: string;
@@ -162,24 +163,22 @@ export class MultipartUploader {
 
       this.reportProgress(fileName, fileSize, fileSize, totalParts, totalParts, true);
 
-      return {
-        success: true,
+      return ok({
         fileName,
         isMultipart: true,
         uploadId,
         parts
-      };
+      });
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.reportProgress(fileName, fileSize, 0, 0, totalParts, false, errorMessage);
 
-      return {
-        success: false,
-        error,
+      return err({
+        error: makeError(error),
         fileName,
         isMultipart: true
-      };
+      });
     }
   }
 

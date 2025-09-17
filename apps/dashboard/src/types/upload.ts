@@ -1,9 +1,11 @@
-export interface UploadResult {
-  success: boolean;
-  error?: unknown;
+import { Result } from "@/lib/result";
+
+export interface UploadData {
   fileName: string;
   isMultipart?: boolean;
 }
+
+export type UploadResult = Result<UploadData, UploadData & { error: Error }>
 
 export interface UploadOptions {
   chunkSize?: number; // For client-side chunking (default: 5MB)
@@ -26,8 +28,9 @@ export interface PresignedUrlInfo {
   url: string;
 }
 
-export interface MultipartUploadResult extends UploadResult {
+export interface MultipartUploadData extends UploadData {
   uploadId?: string;
   parts?: MultipartUploadPart[];
 }
 
+export type MultipartUploadResult = Result<MultipartUploadData, MultipartUploadData & { error: Error }>;

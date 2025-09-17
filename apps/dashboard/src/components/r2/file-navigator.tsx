@@ -25,7 +25,7 @@ export interface R2BucketNavigatorProps {
   path: string[];
   items: UIFileItem[];
   selectedItems: string[];
-  onFolderClick: (folderName: string) => void;
+  onFolderClick: (folderId: string) => void;
   onBreadcrumbClick: (index: number) => void;
   onItemSelect: (itemId: string) => void;
   onSelectAll: () => void;
@@ -36,6 +36,7 @@ export interface R2BucketNavigatorProps {
   sortKey: "name" | "size" | "lastModified";
   sortDirection: "asc" | "desc";
   handleSort: (key: "name" | "size" | "lastModified") => void;
+  isLoading?: boolean;
 }
 
 export function R2BucketNavigator({
@@ -103,6 +104,9 @@ export function R2BucketNavigator({
     })));
     
     await handleUpload(fileArray, path, handleProgressUpdate);
+    
+    // Reset the input value to allow uploading the same files again
+    e.target.value = '';
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -118,6 +122,9 @@ export function R2BucketNavigator({
     })));
     
     await handleUpload(fileArray, path, handleProgressUpdate);
+    
+    // Reset the input value to allow uploading the same files again
+    e.target.value = '';
   };
 
   const onDeleteSelected = async () => {

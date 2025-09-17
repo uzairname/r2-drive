@@ -9,6 +9,7 @@ import { UploadManager } from "../../lib/upload-utils";
 import { FileItem, R2Client } from "../../lib/r2-client";
 import type { UIFileItem } from "@/components/r2/file-table";
 import type { UploadProgressItem } from "@workspace/ui/components/upload-progress";
+import { useErrorToast, useSuccessToast, useWarningToast } from "@workspace/ui/components/toast";
 
 
 function formatFileSize(bytes: number): string {
@@ -35,6 +36,10 @@ type SortDirection = "asc" | "desc";
 function ExplorerContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const errorToast = useErrorToast();
+  const successToast = useSuccessToast();
+  const warningToast = useWarningToast();
+  
   const [bucketName, setBucketName] = useState<string>("");
   const [path, setPath] = useState<string[]>([]);
   const [items, setItems] = useState<UIFileItem[]>([]);
@@ -42,6 +47,7 @@ function ExplorerContent() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [navigatingToFolder, setNavigatingToFolder] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Update URL when path changes
   const updateUrl = useCallback((newPath: string[]) => {
@@ -68,16 +74,28 @@ function ExplorerContent() {
   // Fetch bucket name on mount
   useEffect(() => {
     const fetchBucketName = async () => {
-      const name = await getBucketName();
-      setBucketName(name);
+      const result = await getBucketName();
       
-      // Initialize path from URL or set to bucket root
-      const urlPath = searchParams.get("path");
-      if (urlPath) {
-        const pathSegments = urlPath.split("/").filter(Boolean);
-        setPath([name, ...pathSegments]);
+      if (result.success) {
+        const name = result.data;
+        setBucketName(name);
+        
+        // Initialize path from URL or set to bucket root
+        const urlPath = searchParams.get("path");
+        if (urlPath) {
+          const pathSegments = urlPath.split("/").filter(Boolean);
+          setPath([name, ...pathSegments]);
+        } else {
+          setPath([name]);
+        }
       } else {
-        setPath([name]);
+        errorToast("Failed to load bucket configuration", {
+          title: "Configuration Error",
+          action: {
+            label: "Retry",
+            onClick: () => window.location.reload()
+          }
+        });
       }
     };
     fetchBucketName();
@@ -85,16 +103,43 @@ function ExplorerContent() {
 
   const fetchItems = useCallback(async (currentPath: string[]) => {
     const joined = currentPath.slice(1).join("/");
-    console.log(`Fetching items for path: "${joined}"`);
-    const { objects, folders } = await listFiles(joined);
-    setItems([
-      ...folders.map(f => toUiFileItem(f, "folder")),
-      ...objects.map(f => toUiFileItem(f, "file")),
-    ]);
-    setSelectedItems([]);
-    // Clear navigation state when we successfully load a new path
-    setNavigatingToFolder(null);
-  }, []);
+    setIsLoading(true);
+    
+    try {
+      const result = await listFiles(joined);
+      
+      if (result.success) {
+        const { objects, folders } = result.data;
+        setItems([
+          ...folders.map(f => toUiFileItem(f, "folder")),
+          ...objects.map(f => toUiFileItem(f, "file")),
+        ]);
+        setSelectedItems([]);
+        // Clear navigation state when we successfully load a new path
+        setNavigatingToFolder(null);
+      } else {
+        errorToast(`Failed to load files: ${result.error.message}`, {
+          title: "Loading Error",
+          action: {
+            label: "Retry",
+            onClick: () => fetchItems(currentPath)
+          }
+        });
+        setItems([]);
+      }
+    } catch (error) {
+      errorToast("An unexpected error occurred while loading files", {
+        title: "Unexpected Error",
+        action: {
+          label: "Retry",
+          onClick: () => fetchItems(currentPath)
+        }
+      });
+      setItems([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [errorToast]);
 
   useEffect(() => {
     if (bucketName && path.length > 0) {
@@ -144,18 +189,22 @@ function ExplorerContent() {
     }
   };
 
-  const handleFolderClick = (folderName: string) => {
+  const handleFolderClick = (folderId: string) => {
+    // Extract folder name from the folder ID (which is the full path)
+    // For folder IDs like "A/B/" we want to get "B" as the folder name
+    const folderName = folderId.endsWith("/") 
+      ? folderId.slice(0, -1).split("/").pop() || folderId
+      : folderId.split("/").pop() || folderId;
+    
     // Prevent rapid successive clicks to the same folder
-    if (navigatingToFolder === folderName) {
+    if (navigatingToFolder === folderId) {
       return;
     }
     
-    // Check if we're already in a subfolder of the clicked folder
-    if (path.length > 1 && path[path.length - 1] === folderName) {
-      return;
-    }
+    // No need to check if we're already in the same folder since we now have unique IDs
+    // The folderId includes the full path, so duplicate names won't conflict
     
-    setNavigatingToFolder(folderName);
+    setNavigatingToFolder(folderId);
     const newPath = [...path, folderName];
     setPath(newPath);
     updateUrl(newPath);
@@ -217,26 +266,60 @@ function ExplorerContent() {
       }
     });
 
-    const result = await deleteObjects(keysToDelete);
-    
-    if (result.errors && result.errors.length > 0) {
-      console.error("Some items failed to delete:", result.errors);
-      // You could show a toast notification here
+    try {
+      const result = await deleteObjects(keysToDelete);
+      
+      if (!result.success) {
+        if (result.error.errors && result.error.errors.length > 0) {
+          // Show specific errors
+          const errorMessages = result.error.errors.map(e => 
+            `${e.objectKey}: ${e.error.message}`
+          ).join(', ');
+          errorToast(`Failed to delete some items: ${errorMessages}`, {
+            title: "Deletion Error"
+          });
+        } else {
+          errorToast("Failed to delete selected items", {
+            title: "Deletion Error",
+            action: {
+              label: "Retry",
+              onClick: () => handleDelete(selectedItemIds)
+            }
+          });
+        }
+      } else {
+        const itemCount = selectedItemIds.length;
+        successToast(
+          `Successfully deleted ${itemCount} ${itemCount === 1 ? 'item' : 'items'}`,
+          { title: "Items Deleted" }
+        );
+      }
+    } catch (error) {
+      errorToast("An unexpected error occurred during deletion", {
+        title: "Unexpected Error",
+        action: {
+          label: "Retry",
+          onClick: () => handleDelete(selectedItemIds)
+        }
+      });
     }
-    
+
     // Refresh the file list
     await fetchItems(path);
   };
 
   const handleDownload = async (selectedItemIds: string[]) => {
     const currentFolder = path.slice(1).join("/");
+    let successCount = 0;
+    let errorCount = 0;
+    let skippedFolders = 0;
     
     for (const itemId of selectedItemIds) {
       try {
         // Build the full key for the file
         // For folders, we skip download as they're just markers
         if (itemId.endsWith('/')) {
-          console.log(`Skipping download for folder: ${itemId}`);
+          skippedFolders++;
           continue;
         }
         
@@ -259,22 +342,61 @@ function ExplorerContent() {
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
+        
+        successCount++;
       } catch (error) {
-        console.error(`Error downloading ${itemId}:`, error);
+        errorCount++;
+        errorToast(`Failed to download ${itemId.split('/').pop() || itemId}`, {
+          title: "Download Error"
+        });
       }
+    }
+
+    // Show summary notification
+    if (successCount > 0 && errorCount === 0) {
+      successToast(
+        `Started download of ${successCount} ${successCount === 1 ? 'file' : 'files'}`,
+        { title: "Download Started" }
+      );
+    } else if (errorCount > 0) {
+      warningToast(
+        `Download started for ${successCount} files, ${errorCount} failed`,
+        { title: "Partial Download" }
+      );
+    }
+    
+    if (skippedFolders > 0) {
+      warningToast(
+        `Skipped ${skippedFolders} ${skippedFolders === 1 ? 'folder' : 'folders'} (cannot download folders)`,
+        { title: "Download Notice" }
+      );
     }
   };
 
   const handleCreateFolder = async (folderName: string) => {
     const currentFolder = path.slice(1).join("/");
-    const result = await createFolder(currentFolder, folderName);
     
-    // Refresh the file list after successful folder creation
-    if (result.success) {
-      await fetchItems(path);
+    try {
+      const result = await createFolder(currentFolder, folderName);
+      
+      if (result.success) {
+        successToast(`Folder "${folderName}" created successfully`, {
+          title: "Folder Created"
+        });
+        await fetchItems(path);
+      } else {
+        errorToast(`Failed to create folder: ${result.error}`, {
+          title: "Folder Creation Error"
+        });
+      }
+      
+      return result;
+    } catch (error) {
+      errorToast("An unexpected error occurred while creating the folder", {
+        title: "Unexpected Error"
+      });
+      return { success: false, error: "Unexpected error" } as const;
     }
-    
-    return result;
   };
 
   return (
@@ -296,6 +418,7 @@ function ExplorerContent() {
           sortKey={sortKey}
           sortDirection={sortDirection}
           handleSort={handleSort}
+          isLoading={isLoading}
         />
       </div>
     </div>

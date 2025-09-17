@@ -1,8 +1,8 @@
 import { UPLOAD_CONFIG } from "@/config/app-config";
-import { UploadResult } from "@/types/upload";
+import { UploadData } from "@/types/upload";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { revalidatePath } from "next/cache";
-import type { Result } from "./result";
+import { Result, ok, err, safeAsync, makeError } from "./result";
 
 // Represents file/folder structure
 export interface FileItem {
@@ -32,8 +32,12 @@ export interface ListFilesResult {
   objects: FileItem[];
   folders: FileItem[];
   path: string;
-  error?: string;
 }
+
+export type DeleteObjectsErrors = {
+  objectKey: string;
+  error: Error;
+}[];
 
 export class R2Client {
   private r2: R2Bucket;
@@ -95,52 +99,41 @@ export class R2Client {
     prefix = "",
     delimiter = "/"
   ): Promise<R2ListResult> {
-    try {
-      const result = await this.listR2Objects(prefix, delimiter, false);
+    const result = await this.listR2Objects(prefix, delimiter, false);
 
-      console.log(`Listing with prefix "${prefix}":`, {
-        objects: result.objects.map(o => ({ key: o.key, size: o.size })),
-        delimitedPrefixes: result.delimitedPrefixes
-      });
+    const regularObjects = result.objects.filter((obj) => !(obj.key.endsWith("/") && obj.size === 0));
 
-      const regularObjects = result.objects.filter((obj) => !(obj.key.endsWith("/") && obj.size === 0));
+    const objects = regularObjects.map((obj) => ({
+      key: obj.key,
+      name: obj.key.split("/").pop() || obj.key,
+      size: obj.size,
+      lastModified: obj.uploaded,
+      etag: obj.etag,
+      isFolder: false,
+    }));
 
-      const objects = regularObjects.map((obj) => ({
-        key: obj.key,
-        name: obj.key.split("/").pop() || obj.key,
-        size: obj.size,
-        lastModified: obj.uploaded,
-        etag: obj.etag,
-        isFolder: false,
-      }));
+    // Convert CommonPrefixes to folder FileItems
+    const folders = result.delimitedPrefixes.map((prefix) => ({
+      key: prefix,
+      name: prefix.endsWith("/")
+        ? prefix.slice(0, -1).split("/").pop() || prefix
+        : prefix.split("/").pop() || prefix,
+      size: 0,
+      lastModified: new Date(0),
+      etag: "",
+      isFolder: true,
+    }));
 
-      // Convert CommonPrefixes to folder FileItems
-      const folders = result.delimitedPrefixes.map((prefix) => ({
-        key: prefix,
-        name: prefix.endsWith("/")
-          ? prefix.slice(0, -1).split("/").pop() || prefix
-          : prefix.split("/").pop() || prefix,
-        size: 0,
-        lastModified: new Date(0),
-        etag: "",
-        isFolder: true,
-      }));
-
-      return {
-        objects,
-        folders,
-        truncated: result.truncated,
-        cursor: result.cursor,
-      };
-    } catch (error) {
-      console.error("Error listing objects:", error);
-      throw new Error(`Failed to list objects: ${error instanceof Error ? error.message : String(error)}`);
-    }
+    return {
+      objects,
+      folders,
+      truncated: result.truncated,
+      cursor: result.cursor,
+    };
   }
 
-  async listFiles(path = ""): Promise<ListFilesResult> {
-    try {
-
+  async listFiles(path = ""): Promise<Result<ListFilesResult, Error>> {
+    return safeAsync(async () => {
       let normalizedPath = path.startsWith("/") ? path.substring(1) : path;
       if (normalizedPath && !normalizedPath.endsWith("/")) {
         normalizedPath += "/";
@@ -151,37 +144,24 @@ export class R2Client {
         folders: result.folders,
         path: normalizedPath,
       };
-    } catch (error) {
-
-      console.error("Error listing files:", error);
-      return {
-        objects: [],
-        folders: [],
-        path,
-        error: `Failed to list files: ${error instanceof Error ? error.message : String(error)}`,
-      };
-    }
+    });
   }
 
   /**
    * Get an object from the bucket with the specified key
    */
-  async getObject(key: string): Promise<R2ObjectBody | null> {
-    try {
+  async getObject(key: string): Promise<Result<R2ObjectBody | null, Error>> {
+    return safeAsync(async () => {
       return await this.r2.get(key);
-    } catch (error) {
-      console.error(`Error getting object ${key}:`, error);
-      throw new Error(`Failed to get object: ${error instanceof Error ? error.message : String(error)}`);
-    }
+    });
   }
 
   async uploadObject(
     path: string,
     file: File,
-  ): Promise<UploadResult> {
+  ): Promise<Result<UploadData, UploadData & { error: Error }>> {
 
     try {
-
       const key = path;
 
       const arrayBuffer = await file.arrayBuffer();
@@ -196,21 +176,17 @@ export class R2Client {
         await this.putObject(key, arrayBuffer);
       }
 
-      return {
-        success: true,
-        fileName: file.name
-      };
-    } catch (error) {
-      console.error(`Error uploading file ${file.name}:`, error);
-      return {
-        success: false,
+      return ok({
         fileName: file.name,
-        error
-      };
+      });
 
+    } catch (error) {
+      return err({
+        fileName: file.name,
+        error: makeError(error)
+      });
     }
   }
-
 
 
   /**
@@ -221,28 +197,23 @@ export class R2Client {
     data: ReadableStream | ArrayBuffer | string,
     onProgress?: (progress: { uploaded: number; total: number }) => void
   ): Promise<R2Object | null> {
-    try {
-      // For ArrayBuffer, check size and use multipart if needed
-      if (data instanceof ArrayBuffer && data.byteLength > 50 * 1024 * 1024) { // 50MB threshold
-        return await this.putObjectMultipart(key, data);
-      }
-
-      // For smaller files, simulate progress since R2 doesn't provide upload progress
-      if (onProgress && data instanceof ArrayBuffer) {
-        const totalSize = data.byteLength;
-        onProgress({ uploaded: 0, total: totalSize });
-
-        const result = await this.r2.put(key, data);
-
-        onProgress({ uploaded: totalSize, total: totalSize });
-        return result;
-      }
-
-      return await this.r2.put(key, data);
-    } catch (error) {
-      console.error(`Error uploading object ${key}:`, error);
-      throw new Error(`Failed to upload object: ${error instanceof Error ? error.message : String(error)}`);
+    // For ArrayBuffer, check size and use multipart if needed
+    if (data instanceof ArrayBuffer && data.byteLength > 50 * 1024 * 1024) { // 50MB threshold
+      return await this.putObjectMultipart(key, data);
     }
+
+    // For smaller files, simulate progress since R2 doesn't provide upload progress
+    if (onProgress && data instanceof ArrayBuffer) {
+      const totalSize = data.byteLength;
+      onProgress({ uploaded: 0, total: totalSize });
+
+      const result = await this.r2.put(key, data);
+
+      onProgress({ uploaded: totalSize, total: totalSize });
+      return result;
+    }
+
+    return await this.r2.put(key, data);
   }
 
   /**
@@ -252,62 +223,50 @@ export class R2Client {
     key: string,
     data: ArrayBuffer,
   ): Promise<R2Object | null> {
+    const chunkSize = 5 * 1024 * 1024; // 5MB chunks (minimum for multipart)
+    const totalSize = data.byteLength;
+    const totalParts = Math.ceil(totalSize / chunkSize);
+
+    // Create multipart upload
+    const multipartUpload = await this.r2.createMultipartUpload(key);
+    const uploadId = multipartUpload.uploadId;
+
+    const parts: R2UploadedPart[] = [];
+    let uploadedBytes = 0;
+
     try {
-      const chunkSize = 5 * 1024 * 1024; // 5MB chunks (minimum for multipart)
-      const totalSize = data.byteLength;
-      const totalParts = Math.ceil(totalSize / chunkSize);
+      // Upload each part
+      for (let partNumber = 1; partNumber <= totalParts; partNumber++) {
+        const start = (partNumber - 1) * chunkSize;
+        const end = Math.min(start + chunkSize, totalSize);
+        const chunk = data.slice(start, end);
 
-      // Create multipart upload
-      const multipartUpload = await this.r2.createMultipartUpload(key);
-      const uploadId = multipartUpload.uploadId;
+        const part = await multipartUpload.uploadPart(partNumber, chunk);
+        parts.push({
+          partNumber,
+          etag: part.etag
+        });
 
-      const parts: R2UploadedPart[] = [];
-      let uploadedBytes = 0;
-
-      try {
-        // Upload each part
-        for (let partNumber = 1; partNumber <= totalParts; partNumber++) {
-          const start = (partNumber - 1) * chunkSize;
-          const end = Math.min(start + chunkSize, totalSize);
-          const chunk = data.slice(start, end);
-
-          const part = await multipartUpload.uploadPart(partNumber, chunk);
-          parts.push({
-            partNumber,
-            etag: part.etag
-          });
-
-          uploadedBytes += chunk.byteLength;
-        }
-
-        // Complete the multipart upload
-        return await multipartUpload.complete(parts);
-      } catch (error) {
-        // Abort the multipart upload on error
-        await multipartUpload.abort();
-        throw error;
+        uploadedBytes += chunk.byteLength;
       }
+
+      // Complete the multipart upload
+      return await multipartUpload.complete(parts);
     } catch (error) {
-      console.error(`Error uploading multipart object ${key}:`, error);
-      throw new Error(`Failed to upload multipart object: ${error instanceof Error ? error.message : String(error)}`);
+      // Abort the multipart upload on error
+      await multipartUpload.abort();
+      throw error;
     }
   }
 
   /**
    * Delete an object from the bucket
    */
-  async deleteObject(key: string): Promise<{ success: boolean; error?: string }> {
-  try {
-    await this.r2.delete(key);
-    return { success: true };
-  } catch (error) {
-    console.error(`Error deleting object ${key}:`, error);
-    return {
-      success: false,
-      error: `Failed to delete object: ${error instanceof Error ? error.message : String(error)}`
-    };
+  async deleteObject(key: string): Promise<Result<void, Error>> {
+    return safeAsync(async () => {
+      await this.r2.delete(key);
+    });
   }
-}
 
   /**
    * List the keys of all objects with a given prefix
@@ -320,10 +279,9 @@ export class R2Client {
   /**
    * Delete multiple files or folders from the bucket
    */
-  async deleteObjects(keys: string[]): Promise<{ success: boolean; errors?: string[] }> {
-    const errors: string[] = [];
-
+  async deleteObjects(keys: string[]): Promise<Result<void, DeleteObjectsErrors>> {
     try {
+      const errors: { objectKey: string; error: Error }[] = [];
 
       // Separate folders from files
       const folders = keys.filter(key => key.endsWith('/'));
@@ -334,9 +292,7 @@ export class R2Client {
         try {
           await this._deleteObjects(files);
         } catch (error) {
-          const errorMessage = `Failed to delete files: ${error instanceof Error ? error.message : String(error)}`;
-          console.error(errorMessage);
-          errors.push(errorMessage);
+          errors.push({ objectKey: 'file(s)', error: error instanceof Error ? error : new Error(String(error)) });
         }
       }
 
@@ -348,22 +304,17 @@ export class R2Client {
             await this._deleteObjects(objectsInFolder);
           }
         } catch (error) {
-          const errorMessage = `Failed to delete folder ${folderKey}: ${error instanceof Error ? error.message : String(error)}`;
-          console.error(errorMessage);
-          errors.push(errorMessage);
+          errors.push({ objectKey: folderKey, error: error instanceof Error ? error : new Error(String(error)) });
         }
       }
 
-      return {
-        success: errors.length === 0,
-        errors: errors.length > 0 ? errors : undefined
-      };
+      if (errors.length > 0) {
+        return err(errors);
+      }
+
+      return ok(undefined);
     } catch (error) {
-      console.error(`Error deleting objects:`, error);
-      return {
-        success: false,
-        errors: [`Failed to delete objects: ${error instanceof Error ? error.message : String(error)}`]
-      };
+      return err([{ objectKey: 'unknown', error: makeError(error) }]);
     }
   }
 
@@ -389,44 +340,37 @@ export class R2Client {
    */
   async createFolder(
     basePath: string,
-    folderName: string): Promise<{ success: boolean; errorMessage?: string }> {
+    folderName: string): Promise<Result<void, string>> {
 
-    try {
-      // Validate folder name
-      if (!folderName || !folderName.trim()) {
-        return { success: false, errorMessage: "Folder name cannot be empty" };
-      }
-
-      // Remove invalid characters
-      const sanitizedName = folderName.trim().replace(/[<>:"/\\|?*]/g, "");
-      if (sanitizedName !== folderName.trim()) {
-        return { success: false, errorMessage: "Folder name contains invalid characters" };
-      }
-
-      // Construct full folder path
-      // Normalize the current path (remove leading/trailing slashes)
-      let normalizedPath = basePath.startsWith("/") ? basePath.substring(1) : basePath;
-      if (normalizedPath.endsWith("/")) {
-        normalizedPath = normalizedPath.slice(0, -1);
-      }
-
-      const folderPath = normalizedPath ? `${normalizedPath}/${sanitizedName}` : sanitizedName;
-
-      // Ensure the key ends with a trailing slash
-      const folderKey = folderPath.endsWith("/") ? folderPath : `${folderPath}/`;
-      await this.r2.put(folderKey, "");
-
-      // Revalidate the current path to refresh the UI
-      const revalidationPath = normalizedPath ? `/${normalizedPath}` : "/";
-      revalidatePath(revalidationPath);
-      return { success: true };
-    } catch (error) {
-      console.error(`Error creating folder:`, error);
-      return {
-        success: false,
-        errorMessage: error instanceof Error ? error.message : String(error)
-      };
+    // Validate folder name
+    if (!folderName || !folderName.trim()) {
+      return err("Folder name cannot be empty");
     }
+
+    // Remove invalid characters
+    const sanitizedName = folderName.trim().replace(/[<>:"/\\|?*]/g, "");
+    if (sanitizedName !== folderName.trim()) {
+      return err("Folder name contains invalid characters");
+    }
+
+    // Construct full folder path
+    // Normalize the current path (remove leading/trailing slashes)
+    let normalizedPath = basePath.startsWith("/") ? basePath.substring(1) : basePath;
+    if (normalizedPath.endsWith("/")) {
+      normalizedPath = normalizedPath.slice(0, -1);
+    }
+
+    const folderPath = normalizedPath ? `${normalizedPath}/${sanitizedName}` : sanitizedName;
+
+    // Ensure the key ends with a trailing slash
+    const folderKey = folderPath.endsWith("/") ? folderPath : `${folderPath}/`;
+    await this.r2.put(folderKey, "");
+
+    // Revalidate the current path to refresh the UI
+    const revalidationPath = normalizedPath ? `/${normalizedPath}` : "/";
+    revalidatePath(revalidationPath);
+
+    return ok(undefined);
   }
 
   /**
@@ -440,7 +384,6 @@ export class R2Client {
    * Complete a multipart upload
    */
   async completeMultipartUpload(uploadId: string, key: string, parts: R2UploadedPart[]): Promise<R2Object | null> {
-    // Note: We need to get the multipart upload object first
     const multipartUpload = this.r2.resumeMultipartUpload(key, uploadId);
     return await multipartUpload.complete(parts);
   }
