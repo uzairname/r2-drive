@@ -6,6 +6,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 // Helper function to get environment variables with validation
 function getAuthEnvVars() {
+
   const getSecret = () => {
     const secret = process.env.NEXTAUTH_SECRET ?? (() => {
       console.log("[AUTH] Using Cloudflare environment for NextAuth Secret");
@@ -56,7 +57,6 @@ function getAuthEnvVars() {
 }
 
 const authConfig = getAuthEnvVars();
-
 
 import { isUserAdmin } from "@/lib/auth-helpers";
 
