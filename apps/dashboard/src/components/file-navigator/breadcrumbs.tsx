@@ -7,6 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
+import { useSuccessToast } from "@workspace/ui/components/toast";
 
 export interface R2BreadcrumbsProps {
   path: string[];
@@ -15,22 +16,26 @@ export interface R2BreadcrumbsProps {
 
 export function R2Breadcrumbs({ path, onClick }: R2BreadcrumbsProps) {
   const [copied, setCopied] = React.useState(false);
+  const successToast = useSuccessToast();
   
   if (!path.length) return null;
 
   const handleCopyLink = async () => {
-    try {
-      const pathParam = path.slice(1).join("/"); // Remove bucket name from URL path
-      const url = pathParam 
-        ? `${window.location.origin}/explorer?path=${encodeURIComponent(pathParam)}`
-        : `${window.location.origin}/explorer`;
-      
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      console.error("Failed to copy link:", error);
-    }
+    const pathParam = path.slice(1).join("/"); // Remove bucket name from URL path
+    const url = pathParam 
+      ? `${window.location.origin}/explorer?path=${encodeURIComponent(pathParam)}`
+      : `${window.location.origin}/explorer`;
+    
+    await navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1000);
+    
+    successToast(
+      pathParam 
+        ? `Copied link to folder "${pathParam}"`
+        : "Copied link to bucket root",
+      { title: "Link Copied" }
+    );
   };
 
   // Determine if we need to truncate
@@ -119,7 +124,7 @@ export function R2Breadcrumbs({ path, onClick }: R2BreadcrumbsProps) {
           size="sm"
           onClick={handleCopyLink}
           className="h-8 px-2 ml-4 flex-shrink-0"
-          title="Copy link to current path"
+          title="Copy shareable link to current folder"
         >
           {copied ? (
             <Check className="h-4 w-4 text-green-600" />

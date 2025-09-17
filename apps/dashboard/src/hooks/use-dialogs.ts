@@ -1,0 +1,32 @@
+import { useState, useCallback } from "react";
+
+export interface DialogState {
+  showCreateFolderDialog: boolean;
+}
+
+export interface DialogActions {
+  openCreateFolderDialog: () => void;
+  closeCreateFolderDialog: () => void;
+  setShowCreateFolderDialog: (show: boolean) => void;
+}
+
+export function useDialogs(): DialogState & DialogActions {
+  const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
+
+  const openCreateFolderDialog = useCallback(() => {
+    setShowCreateFolderDialog(true);
+  }, []);
+
+  const closeCreateFolderDialog = useCallback(() => {
+    setShowCreateFolderDialog(false);
+  }, []);
+
+  return {
+    // State
+    showCreateFolderDialog,
+    // Actions
+    openCreateFolderDialog,
+    closeCreateFolderDialog,
+    setShowCreateFolderDialog,
+  };
+}

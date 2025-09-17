@@ -73,7 +73,7 @@ function ToastContainer({ toasts, onRemove }: ToastContainerProps) {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-md">
+    <div className="fixed top-4 right-4 z-50 flex flex-col gap-3 max-w-sm w-full">
       {toasts.map(toast => (
         <ToastItem key={toast.id} toast={toast} onRemove={onRemove} />
       ))}
@@ -88,10 +88,17 @@ interface ToastItemProps {
 
 function ToastItem({ toast, onRemove }: ToastItemProps) {
   const typeStyles = {
-    success: 'border-green-200 bg-green-50 text-green-900',
-    error: 'border-red-200 bg-red-50 text-red-900',
-    warning: 'border-yellow-200 bg-yellow-50 text-yellow-900',
-    info: 'border-blue-200 bg-blue-50 text-blue-900'
+    success: 'border-green-600/20 bg-green-50 text-green-900 dark:border-green-400/30 dark:bg-green-950/50 dark:text-green-100',
+    error: 'border-red-600/20 bg-red-50 text-red-900 dark:border-red-400/30 dark:bg-red-950/50 dark:text-red-100',
+    warning: 'border-yellow-600/20 bg-yellow-50 text-yellow-900 dark:border-yellow-400/30 dark:bg-yellow-950/50 dark:text-yellow-100',
+    info: 'border-border bg-card text-card-foreground'
+  };
+
+  const iconStyles = {
+    success: 'text-green-600 dark:text-green-400',
+    error: 'text-red-600 dark:text-red-400',
+    warning: 'text-yellow-600 dark:text-yellow-400',
+    info: 'text-muted-foreground'
   };
 
   const iconMap = {
@@ -104,24 +111,24 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
   return (
     <div
       className={cn(
-        'rounded-lg border p-4 shadow-lg transition-all duration-300 ease-in-out',
+        'rounded-lg border p-4 shadow-lg backdrop-blur-sm transition-all duration-300 ease-in-out animate-in slide-in-from-right-full',
         typeStyles[toast.type]
       )}
       role="alert"
     >
       <div className="flex items-start gap-3">
-        <div className="flex-shrink-0 text-lg">
+        <div className={cn("flex-shrink-0 text-lg font-medium", iconStyles[toast.type])}>
           {iconMap[toast.type]}
         </div>
         <div className="flex-1 min-w-0">
           {toast.title && (
-            <div className="font-medium mb-1">{toast.title}</div>
+            <div className="font-semibold mb-1 text-sm">{toast.title}</div>
           )}
-          <div className="text-sm">{toast.message}</div>
+          <div className="text-sm opacity-90">{toast.message}</div>
           {toast.action && (
             <button
               onClick={toast.action.onClick}
-              className="mt-2 text-sm font-medium underline hover:no-underline"
+              className="mt-3 text-sm font-medium text-primary hover:text-primary/80 underline-offset-4 hover:underline transition-colors"
             >
               {toast.action.label}
             </button>
@@ -129,10 +136,17 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
         </div>
         <button
           onClick={() => onRemove(toast.id)}
-          className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+          className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors rounded-sm p-1 hover:bg-accent"
           aria-label="Close notification"
         >
-          ✕
+          <svg 
+            className="h-4 w-4" 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
         </button>
       </div>
     </div>
@@ -143,13 +157,13 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
 export function useErrorToast() {
   const { addToast } = useToast();
   
-  return useCallback((message: string, options?: { title?: string; action?: Toast['action'] }) => {
+  return useCallback((message: string, options?: { title?: string; action?: Toast['action']; duration?: number }) => {
     addToast({
       type: 'error',
       message,
-      title: options?.title,
+      title: options?.title || 'Error',
       action: options?.action,
-      duration: 7000 // Longer duration for errors
+      duration: options?.duration ?? 8000 // Longer duration for errors
     });
   }, [addToast]);
 }
@@ -157,12 +171,12 @@ export function useErrorToast() {
 export function useSuccessToast() {
   const { addToast } = useToast();
   
-  return useCallback((message: string, options?: { title?: string }) => {
+  return useCallback((message: string, options?: { title?: string; duration?: number }) => {
     addToast({
       type: 'success',
       message,
-      title: options?.title,
-      duration: 4000
+      title: options?.title || 'Success',
+      duration: options?.duration ?? 4000
     });
   }, [addToast]);
 }
@@ -170,13 +184,13 @@ export function useSuccessToast() {
 export function useWarningToast() {
   const { addToast } = useToast();
   
-  return useCallback((message: string, options?: { title?: string; action?: Toast['action'] }) => {
+  return useCallback((message: string, options?: { title?: string; action?: Toast['action']; duration?: number }) => {
     addToast({
       type: 'warning',
       message,
-      title: options?.title,
+      title: options?.title || 'Warning',
       action: options?.action,
-      duration: 6000
+      duration: options?.duration ?? 6000
     });
   }, [addToast]);
 }
@@ -184,12 +198,12 @@ export function useWarningToast() {
 export function useInfoToast() {
   const { addToast } = useToast();
   
-  return useCallback((message: string, options?: { title?: string }) => {
+  return useCallback((message: string, options?: { title?: string; duration?: number }) => {
     addToast({
       type: 'info',
       message,
       title: options?.title,
-      duration: 5000
+      duration: options?.duration ?? 5000
     });
   }, [addToast]);
 }
