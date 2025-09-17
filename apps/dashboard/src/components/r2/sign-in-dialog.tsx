@@ -10,22 +10,20 @@ import {
 } from "@workspace/ui/components/dialog";
 import { Button } from "@workspace/ui/components/button";
 import { Chrome, HardDrive } from "lucide-react";
+import { signIn } from "next-auth/react";
 
 export interface SignInDialogProps {
   /** Whether the dialog is open */
   open?: boolean;
   /** Callback when dialog open state changes */
-  onOpenChange?: (open: boolean) => void;
-  /** Callback when Google sign-in is clicked */
-  onGoogleSignIn?: () => void;
+  setShowDialog?: (open: boolean) => void;
   /** Whether the sign-in process is loading */
   isLoading?: boolean;
 }
 
 export function SignInDialog({
   open = false,
-  onOpenChange,
-  onGoogleSignIn,
+  setShowDialog: onOpenChange,
   isLoading = false,
 }: SignInDialogProps) {
 
@@ -46,10 +44,12 @@ export function SignInDialog({
 
         <div className="space-y-4 py-2">
               <Button
-                onClick={onGoogleSignIn}
-                disabled={isLoading}
-                className="w-full h-12 text-base font-medium"
                 variant="outline"
+                className="w-full flex items-center gap-2"
+                onClick={() => {
+                  signIn("google");
+                  if (onOpenChange) onOpenChange(false); // Close dialog after sign in
+                }}
               >
                 <Chrome className="mr-3 h-5 w-5" />
                 {isLoading ? "Signing in..." : "Continue with Google"}

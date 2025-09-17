@@ -1,6 +1,5 @@
 
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/auth";
+import { auth } from "@/auth";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 /**
@@ -10,7 +9,7 @@ export function withAdminProtection<T extends any[], R>(
   action: (...args: T) => Promise<R>
 ) {
   return async (...args: T): Promise<R> => {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
 
     if (!session || !session.user?.email) {
       throw new Error("Authentication required");

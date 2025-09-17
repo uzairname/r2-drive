@@ -2,18 +2,19 @@
 
 import { useSession } from "next-auth/react";
 
+
 /**
  * Client-side hook to check if the current user is an admin
  */
 export function useIsAdmin() {
   const { data: session, status } = useSession();
-  
   return {
     isAdmin: session?.user?.isAdmin ?? false,
     isLoading: status === "loading",
     isAuthenticated: status === "authenticated",
     session
   };
+// Removed stray closing brace
 }
 
 /**

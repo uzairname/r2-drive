@@ -1,7 +1,7 @@
 {
   "extends": "@workspace/typescript-config/base.json",
   "compilerOptions": {
-    "skipLibCheck": true,
+    // "skipLibCheck": true,
     "noEmit": true,
     "jsx": "react-jsx"
   },

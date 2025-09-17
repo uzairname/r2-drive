@@ -1,28 +1,14 @@
-// Extend NextAuth types to include isAdmin property
-import NextAuth from "next-auth"
+import NextAuth, { DefaultSession, DefaultUser } from "next-auth";
+
+// Extend the session and user types to include isAdmin
 
 declare module "next-auth" {
   interface Session {
-    user: {
-      id?: string
-      name?: string | null
-      email?: string | null
-      image?: string | null
-      isAdmin?: boolean
-    }
+    user?: {
+      isAdmin?: boolean;
+    } & DefaultSession["user"];
   }
-
-  interface User {
-    id: string
-    name?: string | null
-    email?: string | null
-    image?: string | null
-    isAdmin?: boolean
-  }
-}
-
-declare module "next-auth/jwt" {
-  interface JWT {
-    isAdmin?: boolean
+  interface User extends DefaultUser {
+    isAdmin?: boolean;
   }
 }

@@ -34,7 +34,8 @@ export function ProfileDropdown({
   const userName = session?.user?.name || "Guest User";
   const userEmail = session?.user?.email || "guest@example.com";
   const avatarUrl = session?.user?.image;
-  const isAdmin = session?.user?.isAdmin || false;
+  // const isAdmin = session?.user?.isAdmin || false;
+  const isAdmin = false;
 
   // Generate initials from userName for fallback
   const initials = userName
@@ -49,11 +50,14 @@ export function ProfileDropdown({
   };
 
   const handleGoogleSignIn = async () => {
+    console.log('Initiating Google sign-in...');
     try {
+      console.log("signing in");
       const result = await signIn('google', { 
         callbackUrl: '/explorer',
-        redirect: false 
+        redirect: false
       });
+      console.log("sign-in result:", result);
       
       if (result?.error) {
         console.error('Sign-in error:', result.error);
@@ -145,8 +149,7 @@ export function ProfileDropdown({
     
     <SignInDialog
       open={showSignInDialog}
-      onOpenChange={setShowSignInDialog}
-      onGoogleSignIn={handleGoogleSignIn}
+      setShowDialog={setShowSignInDialog}
       isLoading={status === "loading"}
     />
     </>
