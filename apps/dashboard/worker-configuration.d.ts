@@ -13,7 +13,7 @@ declare namespace Cloudflare {
 		ADMIN_EMAILS: string;
 		GOOGLE_CLIENT_ID: string;
 		GOOGLE_CLIENT_SECRET: string;
-		NEXTAUTH_SECRET: string;
+		AUTH_SECRET: string;
 		FILES: R2Bucket;
 		NEXT_INC_CACHE_R2_BUCKET: R2Bucket;
 		ASSETS: Fetcher;
