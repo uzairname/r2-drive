@@ -41,29 +41,17 @@ export async function checkAdminAuth(): Promise<Result<{ email: string }>> {
 }
 
 /**
- * Check if a user's email is in the ADMIN_EMAILS environment variable
+ * Check if a user's email is in the list of admin emails
  */
 export async function isUserAdmin(email: string): Promise<boolean> {
-  const result = await safeAsync(async () => {
-    const { env } = getCloudflareContext();
-    const adminEmailsStr = env.ADMIN_EMAILS;
 
-    if (!adminEmailsStr) {
-      throw new Error("ADMIN_EMAILS environment variable not found");
-    }
+  const { env } = getCloudflareContext();
 
-    const adminEmails: string[] = JSON.parse(adminEmailsStr);
-    console.log(`admin emails: ${adminEmails.join(", ")}`);
-    console.log(`checking if ${email} is admin`);
-    console.log(`is admin: ${adminEmails.includes(email)}`);
-    return adminEmails.includes(email);
-  });
-
-  if (!result.success) {
-    console.error("Error checking admin status:", result.error);
+  const adminEmailsEnv = env.ADMIN_EMAILS;
+  if (!adminEmailsEnv) {
+    console.warn("[AUTH] No admin emails configured in ADMIN_EMAILS");
     return false;
   }
-
-  return result.data;
+  const adminEmails = adminEmailsEnv.split(",").map(e => e.trim()).filter(e => e.length > 0);
+  return adminEmails.includes(email);
 }
-

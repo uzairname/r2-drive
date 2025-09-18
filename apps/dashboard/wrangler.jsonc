@@ -6,13 +6,12 @@
 	"$schema": "../../packages/utils/wrangler-config-schema.json",
 	"name": "r2-drive",
 	"main": ".open-next/worker.js",
-	"workers_dev": true,
 	"compatibility_date": "2025-08-20",
 	"compatibility_flags": [
-		"nodejs_compat",
+    "nodejs_compat",
 		"global_fetch_strictly_public"
 	],
-	// Uncomment if you want to specify a custom domain
+  "workers_dev": false,
 	"route": { "pattern": "files.uzair.me", "custom_domain": true },
 	"assets": {
 		"binding": "ASSETS",

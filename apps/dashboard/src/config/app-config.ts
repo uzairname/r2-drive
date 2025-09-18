@@ -8,3 +8,7 @@ export const UPLOAD_CONFIG = {
   DEFAULT_MAX_CONCURRENT_UPLOADS: 3,
   MAX_CONCURRENT_PARTS: 3, // Maximum concurrent part uploads for multipart
 } as const;
+
+export const ADMIN_EMAILS = [
+  "uzair.m6d@gmail.com"
+]
