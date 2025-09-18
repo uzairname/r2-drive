@@ -128,7 +128,7 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
           {toast.action && (
             <button
               onClick={toast.action.onClick}
-              className="mt-3 text-sm font-medium text-primary hover:text-primary/80 underline-offset-4 hover:underline transition-colors"
+              className="mt-3 text-sm font-medium text-primary hover:text-primary/80 underline-offset-4 hover:underline transition-colors cursor-pointer"
             >
               {toast.action.label}
             </button>
@@ -136,7 +136,7 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
         </div>
         <button
           onClick={() => onRemove(toast.id)}
-          className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors rounded-sm p-1 hover:bg-accent"
+          className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors rounded-sm p-1 hover:bg-accent cursor-pointer"
           aria-label="Close notification"
         >
           <svg 

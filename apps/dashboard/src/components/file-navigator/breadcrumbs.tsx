@@ -8,117 +8,140 @@ import {
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
 import { useSuccessToast } from "@workspace/ui/components/toast";
+import { Path, Paths } from "@/lib/path-system/path";
+
+const max_visible_segments = 4
 
 export interface R2BreadcrumbsProps {
-  path: string[];
-  onClick: (index: number) => void;
+  bucketName: string;
+  path: Path;
+  onClick: (path: Path) => void;
 }
 
-export function R2Breadcrumbs({ path, onClick }: R2BreadcrumbsProps) {
+export function R2Breadcrumbs({ bucketName, path, onClick }: R2BreadcrumbsProps) {
   const [copied, setCopied] = React.useState(false);
   const successToast = useSuccessToast();
-  
-  if (!path.length) return null;
 
   const handleCopyLink = async () => {
-    const pathParam = path.slice(1).join("/"); // Remove bucket name from URL path
-    const url = pathParam 
-      ? `${window.location.origin}/explorer?path=${encodeURIComponent(pathParam)}`
+    const pathParam = Paths.toURLSearchParams(path);
+    const url = pathParam
+      ? `${window.location.origin}/explorer?${pathParam}`
       : `${window.location.origin}/explorer`;
-    
+
     await navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 1000);
-    
+
     successToast(
-      pathParam 
-        ? `Copied link to folder "${pathParam}"`
+      path.parts.length > 0
+        ? `Copied link to folder "${path.name}"`
         : "Copied link to bucket root",
       { title: "Link Copied" }
     );
   };
 
-  // Determine if we need to truncate
-  const maxVisibleSegments = 4; // Show first, last, and 2 in between, or truncate if more
-  const shouldTruncate = path.length > maxVisibleSegments;
+  // Common breadcrumb button component
+  const BreadcrumbButton = ({
+    children,
+    path,
+    isFirst = false
+  }: {
+    children: React.ReactNode;
+    path: Path;
+    isFirst?: boolean;
+  }) => (
+    <Button variant="ghost" size="sm" onClick={() => onClick(path)} className="h-8 px-2">
+      {isFirst && <HardDrive className="h-4 w-4 mr-1" />}
+      {children}
+    </Button>
+  );
 
-  const renderTruncatedBreadcrumbs = () => {
-    const firstSegment = path[0];
-    const lastTwoSegments = path.slice(-2);
-    const hiddenSegments = path.slice(1, -2); // Segments between first and last two
+  // Common separator component
+  const Separator = () => <ChevronRight className="h-4 w-4 text-muted-foreground" />;
+
+  
+  const renderBreadcrumbsContent = () => {
+    if (path.parts.length === 0) {
+      // For root level, no additional breadcrumbs
+      return null
+    }
     
+    // For truncated view
+
+    // List of intermediate folders as Paths, excluding root (which is rendered separately)
+    const intermediatePaths = path.parts.map((_, index) => Paths.slice(path, index + 1));
+
+    if (path.parts.length > max_visible_segments) {
+      const lastTwoSegments = intermediatePaths.slice(-2);
+      const hiddenSegments = intermediatePaths.slice(0, -2);
+
+      return (
+        <>
+          {path.parts.length > 3 && (
+            <>
+              <Separator />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 px-2 hover:bg-accent">
+                    <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="min-w-[200px]">
+                  {hiddenSegments.map((segment, index) => {
+                    return (
+                      <DropdownMenuItem
+                        key={index}
+                        onClick={() => onClick(segment)}
+                      >
+                        {segment.name || bucketName}
+                      </DropdownMenuItem>
+                    );
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          )}
+
+          {lastTwoSegments.map((segment, index) => {
+            const actualIndex = path.parts.length - 2 + index;
+            return (
+              <div key={actualIndex} className="flex items-center gap-2">
+                <Separator />
+                <BreadcrumbButton path={segment}>
+                  {segment.name}
+                </BreadcrumbButton>
+              </div>
+            );
+          })}
+        </>
+      );
+    }
+
+    // For full view
     return (
-      <div className="flex items-center gap-2 text-sm h-10">
-        {/* First segment (bucket) */}
-        <Button variant="ghost" size="sm" onClick={() => onClick(0)} className="h-8 px-2">
-          <HardDrive className="h-4 w-4 mr-1" />
-          {firstSegment}
-        </Button>
-        
-        {path.length > 3 && (
-          <>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 px-2 hover:bg-accent">
-                  <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="min-w-[200px]">
-                {hiddenSegments.map((segment, index) => {
-                  const actualIndex = index + 1; // +1 because we skip the first segment
-                  return (
-                    <DropdownMenuItem
-                      key={actualIndex}
-                      onClick={() => onClick(actualIndex)}
-                      className="cursor-pointer"
-                    >
-                      {segment}
-                    </DropdownMenuItem>
-                  );
-                })}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </>
-        )}
-        
-        {/* Last two segments */}
-        {lastTwoSegments.map((segment, index) => {
-          const actualIndex = path.length - 2 + index;
-          return (
-            <div key={actualIndex} className="flex items-center gap-2">
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              <Button variant="ghost" size="sm" onClick={() => onClick(actualIndex)} className="h-8 px-2">
-                {segment}
-              </Button>
-            </div>
-          );
-        })}
-      </div>
+      <>
+        {intermediatePaths.map((segment, index) => (
+          <div key={index} className="flex items-center gap-2">
+            <Separator />
+            <BreadcrumbButton path={segment}>
+              {segment.name}
+            </BreadcrumbButton>
+          </div>
+        ))}
+      </>
     );
   };
-
-  const renderFullBreadcrumbs = () => (
-    <div className="flex items-center gap-2 text-sm h-10">
-      <Button variant="ghost" size="sm" onClick={() => onClick(0)} className="h-8 px-2">
-        <HardDrive className="h-4 w-4 mr-1" />
-        {path[0]}
-      </Button>
-      {path.slice(1).map((segment, index) => (
-        <div key={index} className="flex items-center gap-2">
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          <Button variant="ghost" size="sm" onClick={() => onClick(index + 1)} className="h-8 px-2">
-            {segment}
-          </Button>
-        </div>
-      ))}
-    </div>
-  );
 
   return (
     <nav className="overflow-hidden">
       <div className="flex items-center justify-between">
-        {shouldTruncate ? renderTruncatedBreadcrumbs() : renderFullBreadcrumbs()}
+        <div className="flex items-center gap-2 text-sm h-10">
+          <BreadcrumbButton path={Paths.getRoot()} isFirst>
+            {bucketName}
+          </BreadcrumbButton>
+          {renderBreadcrumbsContent()}
+        </div>
+
         <Button
           variant="ghost"
           size="sm"

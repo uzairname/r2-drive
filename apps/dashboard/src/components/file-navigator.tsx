@@ -15,6 +15,7 @@ import { useFileDownload } from "@/hooks/use-file-download";
 import { useDialogs } from "@/hooks/use-dialogs";
 import { useFileOperations } from "@/hooks/use-file-operations";
 import { useFileExplorer } from "@/hooks/use-file-explorer";
+import { Path, Paths } from "@/lib/path-system/path";
 
 
 export function R2BucketNavigator() {
@@ -22,23 +23,18 @@ export function R2BucketNavigator() {
   const fileExplorer = useFileExplorer();
   const fileOperations = useFileOperations();
 
-  const handleUpload = async (files: File[], currentPath: string[], onProgress?: (progress: UploadProgressItem) => void) => {
+  const handleUpload = async (files: File[], currentPath: Path, onProgress?: (progress: UploadProgressItem) => void) => {
     await fileOperations.handleUpload(files, currentPath, onProgress, () => {
       fileExplorer.fetchItems(currentPath);
     });
   };
 
-  const handleDelete = async (selectedItemIds: string[]) => {
-    await fileOperations.handleDelete(selectedItemIds, fileExplorer.path, () => {
+  const handleDelete = async (keysToDelete: string[]) => {
+    await fileOperations.handleDelete(keysToDelete, () => {
       fileExplorer.fetchItems(fileExplorer.path);
     });
   };
 
-  const handleDownload = async (selectedItemIds: string[]) => {
-    await fileOperations.handleDownload(selectedItemIds, fileExplorer.path);
-  };
-
-  
   // Extract upload functionality
   const upload = useFileUpload({
     currentPath: fileExplorer.path,
@@ -52,7 +48,7 @@ export function R2BucketNavigator() {
 
   // Extract download functionality
   const download = useFileDownload({
-    onDownload: handleDownload,
+    downloadItems: fileOperations.handleDownload
   });
 
   // Extract dialog management
@@ -65,18 +61,18 @@ export function R2BucketNavigator() {
       <div className="flex-1 p-6">
         {/* Breadcrumbs */}
         <div className="mb-6">
-          <R2Breadcrumbs path={fileExplorer.path} onClick={fileExplorer.onBreadcrumbClick} />
+          <R2Breadcrumbs bucketName={fileExplorer.bucketName} path={fileExplorer.path} onClick={fileExplorer.navigateToFolder} />
         </div>
 
         {/* File Table */}
         <R2FileTable
           items={fileExplorer.sortedItems}
-          selectedItems={fileExplorer.selectedItems}
+          selectedItems={fileExplorer.selectedItemKeys}
           onItemSelect={fileExplorer.onItemSelect}
           onSelectAll={fileExplorer.onSelectAll}
-          onFolderClick={fileExplorer.onFolderClick}
+          onFolderClick={fileExplorer.navigateToFolder}
           onDeleteItem={deleteOps.onDeleteItem}
-          onDownloadItem={download.onDownloadItem}
+          onDownloadItem={download.downloadItem}
           tableSort={{
             sortKey: fileExplorer.sortKey,
             sortDirection: fileExplorer.sortDirection,
@@ -95,9 +91,9 @@ export function R2BucketNavigator() {
 
         {/* Selection Info */}
         <R2SelectionInfo 
-          count={fileExplorer.selectedItems.length} 
-          onDeleteClick={() => deleteOps.onDeleteSelected(fileExplorer.selectedItems, fileExplorer.items)}
-          onDownload={() => download.onDownloadSelected(fileExplorer.selectedItems)}
+          count={fileExplorer.selectedItemKeys.length} 
+          onDeleteClick={() => deleteOps.onDeleteSelected(fileExplorer.selectedItemKeys, fileExplorer.items)}
+          onDownload={() => download.downloadMultiple(fileExplorer.selectedItemKeys.map(i => Paths.fromR2Key(i)))}
           isDeleting={deleteOps.isDeleting}
           isDownloading={download.isDownloading}
         />

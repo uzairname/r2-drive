@@ -5,6 +5,7 @@ import type { UploadProgressItem } from "@workspace/ui/components/upload-progres
 import { UploadOptions, UploadResult } from "@/types/upload";
 import { UPLOAD_CONFIG } from "@/config/app-config";
 import { MultipartUploader, type MultipartUploadProgress } from "./multipart-uploader";
+import { Path } from "./path-system/path";
 
 /**
  * Enhanced client-side upload utility with progress reporting and multipart support
@@ -52,7 +53,7 @@ export class UploadManager {
     });
   }
 
-  async uploadFile(path: string, file: File): Promise<UploadResult> {
+  async uploadFile(path: Path, file: File): Promise<UploadResult> {
     // Construct the full upload path using webkitRelativePath for folder uploads
     const webkitRelativePath = file.webkitRelativePath;
     const fullPath = webkitRelativePath
@@ -85,7 +86,7 @@ export class UploadManager {
     return result;
   }
 
-  async uploadMultipleFiles(path: string, files: File[]): Promise<UploadResult[]> {
+  async uploadMultipleFiles(path: Path, files: File[]): Promise<UploadResult[]> {
     const results: UploadResult[] = [];
 
     // Separate files by upload method

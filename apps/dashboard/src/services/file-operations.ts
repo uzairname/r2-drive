@@ -1,3 +1,4 @@
+import { Path } from "@/lib/path-system/path";
 import { deleteObjects } from "../lib/actions";
 import { UploadManager } from "../lib/upload-utils";
 import type { UploadProgressItem } from "@workspace/ui/components/upload-progress";
@@ -21,11 +22,10 @@ export class FileOperationsService {
 
   async handleUpload(
     files: File[], 
-    currentPath: string[], 
+    currentPath: Path, 
     onProgress?: (progress: UploadProgressItem) => void,
     onComplete?: () => void
   ): Promise<void> {
-    const joined = currentPath.slice(1).join("/");
     
     // Create upload manager with progress callback
     const uploadManager = new UploadManager(
@@ -38,32 +38,16 @@ export class FileOperationsService {
         onComplete?.();
       }
     );
-    
+
     // Start the upload
-    await uploadManager.uploadMultipleFiles(joined, files);
+    await uploadManager.uploadMultipleFiles(currentPath, files);
   }
 
   async handleDelete(
-    selectedItemIds: string[], 
-    currentPath: string[], 
+    keysToDelete: string[], 
     onComplete?: () => void
   ): Promise<FileOperationsResult> {
     // Convert item IDs to full keys for deletion
-    const currentFolder = currentPath.slice(1).join("/");
-    const keysToDelete = selectedItemIds.map(itemId => {
-      // The itemId is the full key (item.key from FileItem)
-      // For folders, this already includes the trailing slash
-      // For files in subfolders, we need to prepend the current path only if itemId doesn't already include it
-      
-      if (itemId.includes('/') || !currentFolder) {
-        // The itemId is already a full key (e.g., for folders with trailing slash)
-        // or we're in the root directory
-        return itemId;
-      } else {
-        // Regular file in a subfolder - prepend the current path
-        return `${currentFolder}/${itemId}`;
-      }
-    });
 
     try {
       const result = await deleteObjects(keysToDelete);
@@ -82,13 +66,13 @@ export class FileOperationsService {
             title: "Deletion Error",
             action: {
               label: "Retry",
-              onClick: () => this.handleDelete(selectedItemIds, currentPath, onComplete)
+              onClick: () => this.handleDelete(keysToDelete, onComplete)
             }
           });
         }
         return { success: false, error: "Deletion failed" };
       } else {
-        const itemCount = selectedItemIds.length;
+        const itemCount = keysToDelete.length;
         this.toasts.successToast(
           `Successfully deleted ${itemCount} ${itemCount === 1 ? 'item' : 'items'}`,
           { title: "Items Deleted" }
@@ -104,7 +88,7 @@ export class FileOperationsService {
         title: "Unexpected Error",
         action: {
           label: "Retry",
-          onClick: () => this.handleDelete(selectedItemIds, currentPath, onComplete)
+          onClick: () => this.handleDelete(keysToDelete, onComplete)
         }
       });
       return { success: false, error: "Unexpected error" };
@@ -112,39 +96,28 @@ export class FileOperationsService {
   }
 
   async handleDownload(
-    selectedItemIds: string[], 
-    currentPath: string[]
+    selectedItems: Path[], 
   ): Promise<FileOperationsResult> {
-    const currentFolder = currentPath.slice(1).join("/");
     let successCount = 0;
     let errorCount = 0;
     let skippedFolders = 0;
     
-    for (const itemId of selectedItemIds) {
+    for (const item of selectedItems) {
       try {
         // Build the full key for the file
         // For folders, we skip download as they're just markers
-        if (itemId.endsWith('/')) {
+        if (item.isFolder) {
           skippedFolders++;
           continue;
         }
         
-        let key: string;
-        if (itemId.includes('/') || !currentFolder) {
-          // The itemId is already a full key or we're in root
-          key = itemId;
-        } else {
-          // Regular file in a subfolder - prepend the current path
-          key = `${currentFolder}/${itemId}`;
-        }
-        
         // Use the API route for download
-        const url = `/api/download?key=${encodeURIComponent(key)}`;
+        const url = `/api/download?key=${encodeURIComponent(item.key)}`;
         
         // Create a download link
         const a = document.createElement('a');
         a.href = url;
-        a.download = itemId.split('/').pop() || itemId; // Use the last part as filename
+        a.download = item.name;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -152,7 +125,7 @@ export class FileOperationsService {
         successCount++;
       } catch (error) {
         errorCount++;
-        this.toasts.errorToast(`Failed to download ${itemId.split('/').pop() || itemId}`, {
+        this.toasts.errorToast(`Failed to download ${item.name}`, {
           title: "Download Error"
         });
       }

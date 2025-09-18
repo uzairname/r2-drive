@@ -3,15 +3,14 @@ import { UploadData } from "@/types/upload";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { revalidatePath } from "next/cache";
 import { Result, ok, err, safeAsync, makeError } from "./result";
+import { Path, Paths } from "./path-system/path";
 
 // Represents file/folder structure
-export interface FileItem {
-  key: string;
-  name: string;
+export interface R2Item {
+  path: Path;
   size: number;
-  lastModified: Date;
+  lastModified?: Date;
   etag: string;
-  isFolder: boolean;
 }
 
 interface R2ListOptions {
@@ -22,16 +21,16 @@ interface R2ListOptions {
 }
 
 interface R2ListResult {
-  objects: FileItem[];
-  folders: FileItem[];
+  objects: R2Item[];
+  folders: R2Item[];
   truncated: boolean;
   cursor?: string;
 }
 
 export interface ListFilesResult {
-  objects: FileItem[];
-  folders: FileItem[];
-  path: string;
+  objects: R2Item[];
+  folders: R2Item[];
+  path: Path;
 }
 
 export type DeleteObjectsErrors = {
@@ -51,7 +50,7 @@ export class R2Client {
    * Lists all objects with the given prefix
    */
   private async listR2Objects(
-    prefix = "",
+    folder: Path,
     delimiter?: string,
     getAllResults = false
   ): Promise<{ objects: R2Object[]; delimitedPrefixes: string[]; truncated: boolean; cursor?: string }> {
@@ -62,7 +61,7 @@ export class R2Client {
 
     while (hasMore) {
       const options: R2ListOptions = {
-        prefix,
+        prefix: folder.key,
         delimiter,
         limit: 1000,
         cursor,
@@ -96,30 +95,31 @@ export class R2Client {
    * List objects in the bucket with an optional prefix and delimiter
    */
   private async listObjects(
-    prefix = "",
+    folder: Path,
     delimiter = "/"
   ): Promise<R2ListResult> {
-    const result = await this.listR2Objects(prefix, delimiter, false);
+    const result = await this.listR2Objects(folder, delimiter, false);
 
-    const regularObjects = result.objects.filter((obj) => !(obj.key.endsWith("/") && obj.size === 0));
+    const regularObjects = result.objects.filter((obj) => {
+      // Exclude zero-byte objects that represent folders
+      return !(obj.key.endsWith("/") && obj.size === 0)
+    });
 
-    const objects = regularObjects.map((obj) => ({
-      key: obj.key,
-      name: obj.key.split("/").pop() || obj.key,
-      size: obj.size,
-      lastModified: obj.uploaded,
-      etag: obj.etag,
-      isFolder: false,
-    }));
+    const objects = regularObjects.map((obj) => {
+      const path = Paths.fromR2Key(obj.key);
+      return {
+        path: path,
+        size: obj.size,
+        lastModified: obj.uploaded,
+        etag: obj.etag,
+      };
+    });
 
-    // Convert CommonPrefixes to folder FileItems
+    // Convert delimitedPrefixes to folder FileItems
     const folders = result.delimitedPrefixes.map((prefix) => ({
-      key: prefix,
-      name: prefix.endsWith("/")
-        ? prefix.slice(0, -1).split("/").pop() || prefix
-        : prefix.split("/").pop() || prefix,
+      path: Paths.fromR2Key(prefix),
       size: 0,
-      lastModified: new Date(0),
+      lastModified: undefined,
       etag: "",
       isFolder: true,
     }));
@@ -132,17 +132,13 @@ export class R2Client {
     };
   }
 
-  async listFiles(path = ""): Promise<Result<ListFilesResult, Error>> {
+  async listFiles(path: Path): Promise<Result<ListFilesResult, Error>> {
     return safeAsync(async () => {
-      let normalizedPath = path.startsWith("/") ? path.substring(1) : path;
-      if (normalizedPath && !normalizedPath.endsWith("/")) {
-        normalizedPath += "/";
-      }
-      const result = await this.listObjects(normalizedPath, "/");
+      const result = await this.listObjects(path, "/");
       return {
         objects: result.objects,
         folders: result.folders,
-        path: normalizedPath,
+        path,
       };
     });
   }
@@ -271,21 +267,21 @@ export class R2Client {
   /**
    * List the keys of all objects with a given prefix
    */
-  async listObjectKeys(prefix: string): Promise<string[]> {
-    const result = await this.listR2Objects(prefix, undefined, true);
+  async listObjectKeys(path: Path): Promise<string[]> {
+    const result = await this.listR2Objects(path, "/", true);
     return result.objects.map(obj => obj.key);
   }
 
   /**
    * Delete multiple files or folders from the bucket
    */
-  async deleteObjects(keys: string[]): Promise<Result<void, DeleteObjectsErrors>> {
+  async deleteObjects(itemPaths: Path[]): Promise<Result<void, DeleteObjectsErrors>> {
     try {
       const errors: { objectKey: string; error: Error }[] = [];
 
       // Separate folders from files
-      const folders = keys.filter(key => key.endsWith('/'));
-      const files = keys.filter(key => !key.endsWith('/'));
+      const folders = itemPaths.filter(item => item.isFolder);
+      const files = itemPaths.filter(item => !item.isFolder);
 
       // Delete files directly
       if (files.length > 0) {
@@ -297,14 +293,15 @@ export class R2Client {
       }
 
       // Delete folders by deleting all objects with that prefix
-      for (const folderKey of folders) {
+      for (const folder of folders) {
         try {
-          const objectsInFolder = await this.listObjectKeys(folderKey);
-          if (objectsInFolder.length > 0) {
-            await this._deleteObjects(objectsInFolder);
+          const objectsInFolder = await this.listObjects(folder);
+          if (objectsInFolder.objects.length > 0) {
+            const objectPaths = objectsInFolder.objects.map(o => o.path);
+            await this._deleteObjects(objectPaths);
           }
         } catch (error) {
-          errors.push({ objectKey: folderKey, error: error instanceof Error ? error : new Error(String(error)) });
+          errors.push({ objectKey: folder.key, error: error instanceof Error ? error : new Error(String(error)) });
         }
       }
 
@@ -322,14 +319,14 @@ export class R2Client {
   /**
    * Delete multiple objects from the bucket
    */
-  private async _deleteObjects(keys: string[]): Promise<void> {
+  private async _deleteObjects(itemPaths: Path[]): Promise<void> {
     // R2 delete method can handle arrays for bulk deletion
-    if (keys.length === 0) return;
+    if (itemPaths.length === 0) return;
 
     // Delete in batches if we have too many keys
     const batchSize = 1000; // R2 limit for bulk operations
-    for (let i = 0; i < keys.length; i += batchSize) {
-      const batch = keys.slice(i, i + batchSize);
+    for (let i = 0; i < itemPaths.length; i += batchSize) {
+      const batch = itemPaths.slice(i, i + batchSize).map(item => item.key)
       await this.r2.delete(batch);
     }
   }
@@ -339,35 +336,25 @@ export class R2Client {
    * Ending with a trailing slash to indicate it's a folder
    */
   async createFolder(
-    basePath: string,
-    folderName: string): Promise<Result<void, string>> {
+    baseFolder: Path,
+    name: string): Promise<Result<void, string>> {
 
     // Validate folder name
-    if (!folderName || !folderName.trim()) {
+    if (!name || !name.trim()) {
       return err("Folder name cannot be empty");
     }
-
+    
     // Remove invalid characters
-    const sanitizedName = folderName.trim().replace(/[<>:"/\\|?*]/g, "");
-    if (sanitizedName !== folderName.trim()) {
+    const sanitizedName = name.trim().replace(/[<>:"/\\|?*]/g, "");
+    if (sanitizedName !== name.trim()) {
       return err("Folder name contains invalid characters");
     }
 
-    // Construct full folder path
-    // Normalize the current path (remove leading/trailing slashes)
-    let normalizedPath = basePath.startsWith("/") ? basePath.substring(1) : basePath;
-    if (normalizedPath.endsWith("/")) {
-      normalizedPath = normalizedPath.slice(0, -1);
-    }
-
-    const folderPath = normalizedPath ? `${normalizedPath}/${sanitizedName}` : sanitizedName;
-
-    // Ensure the key ends with a trailing slash
-    const folderKey = folderPath.endsWith("/") ? folderPath : `${folderPath}/`;
+    const folderKey = Paths.getChildFolder(baseFolder, sanitizedName).key;
     await this.r2.put(folderKey, "");
 
     // Revalidate the current path to refresh the UI
-    const revalidationPath = normalizedPath ? `/${normalizedPath}` : "/";
+    const revalidationPath = baseFolder ? `/${baseFolder}` : "/";
     revalidatePath(revalidationPath);
 
     return ok(undefined);

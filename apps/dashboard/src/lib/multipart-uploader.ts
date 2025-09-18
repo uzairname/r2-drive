@@ -8,6 +8,7 @@ import type {
 } from "@/types/upload";
 import { UPLOAD_CONFIG } from "@/config/app-config";
 import { err, makeError, ok } from "./result";
+import { Path } from "./path-system/path";
 
 export interface MultipartUploadProgress {
   fileName: string;
@@ -185,7 +186,7 @@ export class MultipartUploader {
   /**
    * Upload multiple files using multipart upload
    */
-  async uploadMultipleFiles(path: string, files: File[]): Promise<MultipartUploadResult[]> {
+  async uploadMultipleFiles(path: Path, files: File[]): Promise<MultipartUploadResult[]> {
     const results: MultipartUploadResult[] = [];
     
     // Process files sequentially to avoid overwhelming the server

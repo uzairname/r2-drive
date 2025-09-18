@@ -1,17 +1,19 @@
 import React from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
-import { Folder, File, Image, Music, Video, Archive, FileText, FileJson, FileCode, FileType2, FileSpreadsheet, Calendar, ArrowUp, ArrowDown, ArrowUpDown, Trash2, Download } from "lucide-react";
-import { getMimeType } from "../../lib/file-utils";
+import { Folder, Image, Music, Video, Archive, FileText, FileJson, FileCode, FileType2, FileSpreadsheet, Calendar, ArrowUp, ArrowDown, ArrowUpDown, Trash2, Download } from "lucide-react";
+import { formatFileSize, getMimeType } from "../../lib/file-utils";
 import { Checkbox } from "@workspace/ui/components/checkbox";
 import { Button } from "@workspace/ui/components/button";
 import { truncateString } from "@workspace/ui/lib/utils";
 import { AdminOnly } from "@/hooks/use-admin";
+import { Path, Paths } from "@/lib/path-system/path";
+import { R2Item } from "@/lib/r2-client";
 
-function itemToIcon(item: UIFileItem) {
-  return item.type === "folder" ? (
+function itemToIcon(item: R2Item) {
+  return item.path.isFolder ? (
     <Folder className="h-5 w-5 text-primary" />
-  ) : (() =>{
-    const mimeType = getMimeType(item.name)
+  ) : (() => {
+    const mimeType = getMimeType(item.path.name)
     if (mimeType.startsWith("image/")) return <Image className="h-5 w-5 text-blue-500" />;
     if (mimeType.startsWith("audio/")) return <Music className="h-5 w-5 text-pink-500" />;
     if (mimeType.startsWith("video/")) return <Video className="h-5 w-5 text-purple-500" />;
@@ -27,32 +29,31 @@ function itemToIcon(item: UIFileItem) {
   })()
 }
 
-export interface UIFileItem {
-  id: string;
-  name: string;
-  type: "file" | "folder";
-  size?: string;
-  lastModified: string;
-}
-
 export interface TableSortProps {
   sortKey: "name" | "size" | "lastModified";
   sortDirection: "asc" | "desc";
   onSort: (key: "name" | "size" | "lastModified") => void;
 }
 
-export interface R2FileTableProps {
-  items: UIFileItem[];
-  selectedItems: string[];
-  onItemSelect: (itemId: string) => void;
-  onSelectAll: () => void;
-  onFolderClick: (folderId: string) => void;
-  onDeleteItem?: (itemId: string, itemName: string) => void;
-  onDownloadItem?: (itemId: string, itemName: string) => void;
-  tableSort?: TableSortProps;
-}
-
-export function R2FileTable({ items, selectedItems, onItemSelect, onSelectAll, onFolderClick, onDeleteItem, onDownloadItem, tableSort }: R2FileTableProps) {
+export function R2FileTable({
+  items,
+  selectedItems,
+  onItemSelect,
+  onSelectAll,
+  onFolderClick,
+  onDeleteItem,
+  onDownloadItem,
+  tableSort }: {
+    items: R2Item[];
+    selectedItems: string[];
+    onItemSelect: (key: string) => void;
+    onSelectAll: () => void;
+    onFolderClick: (path: Path) => void;
+    onDeleteItem?: (path: Path) => void;
+    onDownloadItem?: (path: Path) => void;
+    tableSort?: TableSortProps;
+  }
+) {
   const renderSortIcon = (key: "name" | "size" | "lastModified") => {
     if (!tableSort) return null;
     if (tableSort.sortKey !== key) return <ArrowUpDown className="inline h-4 w-4 text-muted-foreground ml-1" />;
@@ -76,56 +77,57 @@ export function R2FileTable({ items, selectedItems, onItemSelect, onSelectAll, o
             <TableHead className="text-left w-48 cursor-pointer select-none" onClick={() => tableSort?.onSort("lastModified")}>Last Modified{renderSortIcon("lastModified")}</TableHead>
             <TableHead className="w-12"></TableHead>
           </TableRow>
-        </TableHeader>  
+        </TableHeader>
         <TableBody>
           {items.map((item) => (
             <TableRow
-              key={item.id}
+              key={item.path.key}
               className="border-b border-border hover:bg-muted/50 cursor-pointer group"
-              onClick={() => item.type === "folder" && onFolderClick(item.id)}
+              onClick={() => item.path.isFolder && onFolderClick(item.path)}
             >
               <TableCell>
                 <Checkbox
-                  checked={selectedItems.includes(item.id)}
-                  onCheckedChange={() => onItemSelect(item.id)}
+                  checked={selectedItems.includes(item.path.key)}
+                  onCheckedChange={() => onItemSelect(item.path.key)}
                   onClick={(e: React.MouseEvent<HTMLButtonElement>) => e.stopPropagation()}
-                  aria-label={`Select ${item.name}`}
+                  aria-label={`Select ${item.path.name}`}
                 />
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-3">
                   {itemToIcon(item)}
-                  <span 
-                    className="font-medium text-foreground" 
-                    title={item.name}
+                  <span
+                    className="font-medium text-foreground"
+                    title={item.path.name}
                   >
-                    {truncateString(item.name, 40)}
+                    {truncateString(item.path.name, 40)}
                   </span>
                 </div>
               </TableCell>
-              <TableCell className="text-muted-foreground">{item.size || "—"}</TableCell>
+              <TableCell className="text-muted-foreground">{typeof item.size === "number" && !item.path.isFolder ? formatFileSize(item.size) : "—"}</TableCell>
               <TableCell className="text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
-                  {item.lastModified}
+                  {item.lastModified?.toISOString().slice(0, 10) ?? "—"}
                 </div>
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-1">
-                  {onDownloadItem && item.type === "file" && (
+                  {onDownloadItem && (
                     <Button
                       variant="ghost"
                       size="sm"
                       className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0 hover:bg-primary/10"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onDownloadItem(item.id, item.name);
+                        onDownloadItem(item.path);
                       }}
-                      aria-label={`Download ${item.name}`}
+                      aria-label={`Download ${item.path.name}`}
                     >
                       <Download className="h-4 w-4" />
-                    </Button>
-                  )}
+                    </Button>)
+                  }
+
                   <AdminOnly>
                     {onDeleteItem && (
                       <Button
@@ -134,9 +136,9 @@ export function R2FileTable({ items, selectedItems, onItemSelect, onSelectAll, o
                         className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                         onClick={(e) => {
                           e.stopPropagation();
-                          onDeleteItem(item.id, item.name);
+                          onDeleteItem(item.path);
                         }}
-                        aria-label={`Delete ${item.name}`}
+                        aria-label={`Delete ${item.path.name}`}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

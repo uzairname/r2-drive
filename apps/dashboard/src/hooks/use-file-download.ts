@@ -1,3 +1,4 @@
+import { Path } from "@/lib/path-system/path";
 import { useState, useCallback } from "react";
 
 export interface DownloadState {
@@ -5,43 +6,39 @@ export interface DownloadState {
 }
 
 export interface DownloadActions {
-  onDownloadItem: (itemId: string, itemName: string) => Promise<void>;
-  onDownloadSelected: (selectedItems: string[]) => Promise<void>;
+  downloadItem: (item: Path) => Promise<void>;
+  downloadMultiple: (items: Path[]) => Promise<void>;
 }
 
-export interface UseFileDownloadProps {
-  onDownload: (itemIds: string[]) => Promise<void>;
-}
-
-export function useFileDownload({ onDownload }: UseFileDownloadProps): DownloadState & DownloadActions {
+export function useFileDownload({ downloadItems }: {
+  downloadItems: (selectedItems: Path[]) => Promise<unknown>;
+}): DownloadState & DownloadActions {
   const [isDownloading, setIsDownloading] = useState(false);
 
-  const onDownloadItem = useCallback(async (itemId: string, itemName: string) => {
+  const downloadItem = useCallback(async (item: Path) => {
     try {
-      await onDownload([itemId]);
+      await downloadItems([item]);
     } catch (error) {
       console.error("Error downloading item:", error);
     }
-  }, [onDownload]);
+  }, [downloadItems]);
 
-  const onDownloadSelected = useCallback(async (selectedItems: string[]) => {
+  const downloadMultiple = useCallback(async (selectedItems: Path[]) => {
     if (selectedItems.length === 0) return;
     
     setIsDownloading(true);
     try {
-      await onDownload(selectedItems);
+      await downloadItems(selectedItems);
     } catch (error) {
       console.error("Error downloading items:", error);
     } finally {
       setIsDownloading(false);
     }
-  }, [onDownload]);
+  }, [downloadItems]);
 
   return {
-    // State
     isDownloading,
-    // Actions
-    onDownloadItem,
-    onDownloadSelected,
+    downloadItem,
+    downloadMultiple
   };
 }

@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback } from "react";
 import type { UploadProgressItem } from "@workspace/ui/components/upload-progress";
+import { Path } from "@/lib/path-system/path";
 
 export interface UploadState {
   uploadProgress: UploadProgressItem[];
@@ -19,8 +20,8 @@ export interface UploadActions {
 }
 
 export interface UseFileUploadProps {
-  currentPath: string[];
-  onUpload: (files: File[], currentPath: string[], onProgress?: (progress: UploadProgressItem) => void) => Promise<void>;
+  currentPath: Path;
+  onUpload: (files: File[], currentPath: Path, onProgress?: (progress: UploadProgressItem) => void) => Promise<void>;
 }
 
 export function useFileUpload({ currentPath, onUpload }: UseFileUploadProps): UploadState & UploadActions {

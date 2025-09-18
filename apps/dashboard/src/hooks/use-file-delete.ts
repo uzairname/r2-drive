@@ -1,5 +1,6 @@
+import { Path } from "@/lib/path-system/path";
+import { R2Item } from "@/lib/r2-client";
 import { useState, useCallback } from "react";
-import type { UIFileItem } from "@/components/file-navigator/file-table";
 
 export interface DeleteState {
   isDeleting: boolean;
@@ -8,8 +9,8 @@ export interface DeleteState {
 }
 
 export interface DeleteActions {
-  onDeleteSelected: (selectedItems: string[], items: UIFileItem[]) => void;
-  onDeleteItem: (itemId: string, itemName: string) => void;
+  onDeleteSelected: (selectedItems: string[], items: R2Item[]) => void;
+  onDeleteItem: (path: Path) => void;
   handleConfirmDelete: () => Promise<void>;
   setShowDeleteDialog: (show: boolean) => void;
 }
@@ -26,19 +27,19 @@ export function useFileDelete({ onDelete }: UseFileDeleteProps): DeleteState & D
     names: []
   });
 
-  const onDeleteSelected = useCallback((selectedItems: string[], items: UIFileItem[]) => {
+  const onDeleteSelected = useCallback((selectedItems: string[], items: R2Item[]) => {
     if (selectedItems.length === 0) return;
     
     const selectedItemNames = items
-      .filter(item => selectedItems.includes(item.id))
-      .map(item => item.name);
+      .filter(item => selectedItems.includes(item.path.key))
+      .map(item => item.path.name);
     
     setItemsToDelete({ ids: selectedItems, names: selectedItemNames });
     setShowDeleteDialog(true);
   }, []);
 
-  const onDeleteItem = useCallback((itemId: string, itemName: string) => {
-    setItemsToDelete({ ids: [itemId], names: [itemName] });
+  const onDeleteItem = useCallback((path: Path) => {
+    setItemsToDelete({ ids: [path.key], names: [path.name] });
     setShowDeleteDialog(true);
   }, []);
 
