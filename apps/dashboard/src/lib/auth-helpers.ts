@@ -53,6 +53,9 @@ export async function isUserAdmin(email: string): Promise<boolean> {
     }
 
     const adminEmails: string[] = JSON.parse(adminEmailsStr);
+    console.log(`admin emails: ${adminEmails.join(", ")}`);
+    console.log(`checking if ${email} is admin`);
+    console.log(`is admin: ${adminEmails.includes(email)}`);
     return adminEmails.includes(email);
   });
 

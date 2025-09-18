@@ -8,7 +8,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth((req) => {
 
   const { env } = getCloudflareContext();
 
-  console.log(`${env.ADMIN_EMAILS}`)
+  console.log(`admin emails: " ${env.ADMIN_EMAILS} "`)
 
   return {
   trustHost: true,
