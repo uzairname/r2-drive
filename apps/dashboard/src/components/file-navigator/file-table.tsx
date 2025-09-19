@@ -119,7 +119,7 @@ export function R2FileTable({
   }
 
   return (
-    <div className="border border-border rounded-lg bg-card overflow-hidden">
+    <div className="overflow-hidden">
       <div className="max-h-[70vh] overflow-y-auto">
         <Table>
           <TableHeader className="sticky top-0 bg-card z-10">

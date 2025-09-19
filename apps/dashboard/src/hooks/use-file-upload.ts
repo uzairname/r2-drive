@@ -10,6 +10,7 @@ export interface UploadState {
 
 export interface UploadActions {
   upload: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>
+  uploadFiles: (files: File[]) => Promise<void>
   triggerFileUpload: () => void
   triggerFolderUpload: () => void
   onSuccess?: () => void
@@ -45,17 +46,25 @@ export function useFileUpload({
     })
   }
 
-  // Handle file or folder upload
+  // Handle direct file upload (for drag and drop)
+  const uploadFiles = useCallback(
+    async (files: File[]) => {
+      setUploadProgress([]) // Reset progress for new upload session
+      await onUpload(files, currentPath, handleProgressUpdate)
+    },
+    [onUpload, currentPath]
+  )
+
+  // Handle file or folder upload from input
   const upload = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files
       if (!files || files.length === 0) return
       const fileArray = Array.from(files)
       e.target.value = '' // Reset input for future uploads
-      setUploadProgress([]) // Reset progress for new upload session
-      await onUpload(fileArray, currentPath, handleProgressUpdate)
+      await uploadFiles(fileArray)
     },
-    [onUpload, currentPath]
+    [uploadFiles]
   )
 
   const triggerFileUpload = () => {
@@ -73,6 +82,7 @@ export function useFileUpload({
     folderInputRef,
     // Actions
     upload,
+    uploadFiles,
     triggerFileUpload,
     triggerFolderUpload,
   }

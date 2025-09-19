@@ -4,17 +4,13 @@ import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { NextRequest, NextResponse } from 'next/server'
 import { AwsClient } from 'aws4fetch';
 
-
 function parseUploadId(xml: string): string | null {
   const uploadIdMatch = xml.match(/<UploadId>(.*?)<\/UploadId>/);
   return uploadIdMatch?.[1] || null;
 }
 
 async function _POST(request: NextRequest) {
-
   try {
-
-    
       const { env } = getCloudflareContext()
     
       const r2 = new AwsClient({

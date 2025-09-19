@@ -13,6 +13,7 @@ import { R2Breadcrumbs } from './file-navigator/breadcrumbs'
 import { CopyLinkButton } from './file-navigator/copy-link-button'
 import { CreateFolderDialog } from './file-navigator/create-folder-dialog'
 import { DeleteConfirmationDialog } from './file-navigator/delete-confirmation-dialog'
+import { DropZone } from './file-navigator/drop-zone'
 import { FileActionButtons } from './file-navigator/file-action-buttons'
 import { R2FileTable } from './file-navigator/file-table'
 import { R2SelectionInfo } from './file-navigator/selection-info'
@@ -70,20 +71,25 @@ export function R2BucketNavigator() {
         </div>
 
         {/* File Table */}
-        <R2FileTable
-          items={fileExplorer.sortedItems}
-          selectedItems={fileExplorer.selectedItemKeys}
-          onItemSelect={fileExplorer.onItemSelect}
-          onSelectAll={fileExplorer.onSelectAll}
-          onFolderClick={fileExplorer.navigateToFolder}
-          onDeleteItem={deleteOps.onDeleteItem}
-          onDownloadItem={download.downloadItem}
-          tableSort={{
-            sortKey: fileExplorer.sortKey,
-            sortDirection: fileExplorer.sortDirection,
-            onSort: fileExplorer.onSort,
-          }}
-        />
+        <DropZone 
+          onFileDrop={upload.uploadFiles}
+          className="border border-border rounded-lg bg-card overflow-hidden"
+        >
+          <R2FileTable
+            items={fileExplorer.sortedItems}
+            selectedItems={fileExplorer.selectedItemKeys}
+            onItemSelect={fileExplorer.onItemSelect}
+            onSelectAll={fileExplorer.onSelectAll}
+            onFolderClick={fileExplorer.navigateToFolder}
+            onDeleteItem={deleteOps.onDeleteItem}
+            onDownloadItem={download.downloadItem}
+            tableSort={{
+              sortKey: fileExplorer.sortKey,
+              sortDirection: fileExplorer.sortDirection,
+              onSort: fileExplorer.onSort,
+            }}
+          />
+        </DropZone>
 
         {/* File Action Btns */}
         <AdminOnly>
