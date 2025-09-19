@@ -1,4 +1,4 @@
-import { Path } from "@/lib/path-system/path";
+import { Path } from "@/lib/path";
 import { R2Item } from "@/lib/r2-client";
 import { useState, useCallback } from "react";
 
@@ -27,7 +27,7 @@ export function useFileDelete({ onDelete }: UseFileDeleteProps): DeleteState & D
     names: []
   });
 
-  const onDeleteSelected = useCallback((selectedItems: string[], items: R2Item[]) => {
+  const onDeleteSelected = (selectedItems: string[], items: R2Item[]) => {
     if (selectedItems.length === 0) return;
     
     const selectedItemNames = items
@@ -36,12 +36,12 @@ export function useFileDelete({ onDelete }: UseFileDeleteProps): DeleteState & D
     
     setItemsToDelete({ ids: selectedItems, names: selectedItemNames });
     setShowDeleteDialog(true);
-  }, []);
+  };
 
-  const onDeleteItem = useCallback((path: Path) => {
+  const onDeleteItem = (path: Path) => {
     setItemsToDelete({ ids: [path.key], names: [path.name] });
     setShowDeleteDialog(true);
-  }, []);
+  };
 
   const handleConfirmDelete = useCallback(async () => {
     setIsDeleting(true);

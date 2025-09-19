@@ -53,5 +53,6 @@ export async function isUserAdmin(email: string): Promise<boolean> {
     return false;
   }
   const adminEmails = adminEmailsEnv.split(",").map(e => e.trim()).filter(e => e.length > 0);
+
   return adminEmails.includes(email);
 }

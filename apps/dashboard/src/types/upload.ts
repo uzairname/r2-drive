@@ -2,14 +2,11 @@ import { Result } from "@/lib/result";
 
 export interface UploadData {
   fileName: string;
-  isMultipart?: boolean;
 }
 
 export type UploadResult = Result<UploadData, UploadData & { error: Error }>
 
 export interface UploadOptions {
-  chunkSize?: number; // For client-side chunking (default: 5MB)
-  maxConcurrentUploads?: number; // Max concurrent file uploads (default: 3)
 }
 
 // Multipart upload types
@@ -29,7 +26,7 @@ export interface PresignedUrlInfo {
 }
 
 export interface MultipartUploadData extends UploadData {
-  uploadId?: string;
+  // uploadId?: string;
   parts?: MultipartUploadPart[];
 }
 

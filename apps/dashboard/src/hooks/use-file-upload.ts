@@ -1,37 +1,31 @@
 import { useRef, useState, useCallback } from "react";
-import type { UploadProgressItem } from "@workspace/ui/components/upload-progress";
-import { Path } from "@/lib/path-system/path";
+import type { ItemUploadProgress } from "@workspace/ui/components/upload-progress";
+import { Path } from "@/lib/path";
 
 export interface UploadState {
-  uploadProgress: UploadProgressItem[];
-  showUploadProgress: boolean;
-  isUploading: boolean;
+  uploadProgress: ItemUploadProgress[];
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   folderInputRef: React.RefObject<HTMLInputElement | null>;
 }
 
 export interface UploadActions {
-  handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
-  handleFolderUpload: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
+  upload: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
   triggerFileUpload: () => void;
   triggerFolderUpload: () => void;
-  handleProgressUpdate: (progress: UploadProgressItem) => void;
-  closeUploadProgress: () => void;
+  onSuccess?: () => void;
 }
 
 export interface UseFileUploadProps {
   currentPath: Path;
-  onUpload: (files: File[], currentPath: Path, onProgress?: (progress: UploadProgressItem) => void) => Promise<void>;
+  onUpload: (files: File[], currentPath: Path, onProgress?: (progress: ItemUploadProgress) => void) => Promise<void>;
 }
 
 export function useFileUpload({ currentPath, onUpload }: UseFileUploadProps): UploadState & UploadActions {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
-  const [uploadProgress, setUploadProgress] = useState<UploadProgressItem[]>([]);
-  const [showUploadProgress, setShowUploadProgress] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<ItemUploadProgress[]>([]);
 
-  const handleProgressUpdate = useCallback((progress: UploadProgressItem) => {
+  const handleProgressUpdate = (progress: ItemUploadProgress) => {
     setUploadProgress(prev => {
       const updated = [...prev];
       const index = updated.findIndex(item => item.fileName === progress.fileName);
@@ -42,70 +36,40 @@ export function useFileUpload({ currentPath, onUpload }: UseFileUploadProps): Up
       }
       return updated;
     });
-  }, []);
+  }
 
-  const processFileUpload = useCallback(async (files: FileList) => {
+  // Handle file or folder upload
+  const upload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
     if (!files || files.length === 0) return;
-    
     const fileArray = Array.from(files);
-    setIsUploading(true);
-    setShowUploadProgress(true);
     setUploadProgress(fileArray.map(file => ({
       fileName: file.name,
       progress: 0,
       completed: false
     })));
     
-    try {
-      await onUpload(fileArray, currentPath, handleProgressUpdate);
-    } finally {
-      setIsUploading(false);
-    }
-  }, [currentPath, onUpload, handleProgressUpdate]);
-
-  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      await processFileUpload(files);
-    }
+    await onUpload(fileArray, currentPath, handleProgressUpdate);
     // Reset the input value to allow uploading the same files again
     e.target.value = '';
-  }, [processFileUpload]);
+  }, [onUpload, currentPath]);
 
-  const handleFolderUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      await processFileUpload(files);
-    }
-    // Reset the input value to allow uploading the same folders again
-    e.target.value = '';
-  }, [processFileUpload]);
-
-  const triggerFileUpload = useCallback(() => {
+  const triggerFileUpload = () => {
     fileInputRef.current?.click();
-  }, []);
+  };
 
-  const triggerFolderUpload = useCallback(() => {
+  const triggerFolderUpload = () => {
     folderInputRef.current?.click();
-  }, []);
-
-  const closeUploadProgress = useCallback(() => {
-    setShowUploadProgress(false);
-  }, []);
+  };
 
   return {
     // State
     uploadProgress,
-    showUploadProgress,
-    isUploading,
     fileInputRef,
     folderInputRef,
     // Actions
-    handleFileUpload,
-    handleFolderUpload,
+    upload,
     triggerFileUpload,
     triggerFolderUpload,
-    handleProgressUpdate,
-    closeUploadProgress,
   };
 }

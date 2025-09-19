@@ -1,14 +1,14 @@
 import React from "react";
 import { Button } from "@workspace/ui/components/button";
-import { ChevronRight, HardDrive, MoreHorizontal, Link, Check } from "lucide-react";
+import { ChevronRight, HardDrive, MoreHorizontal } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
-import { useSuccessToast } from "@workspace/ui/components/toast";
-import { Path, Paths } from "@/lib/path-system/path";
+import { Path, Paths } from "@/lib/path";
+import { CopyLinkButton } from "./copy-link-button";
 
 const max_visible_segments = 4
 
@@ -19,26 +19,6 @@ export interface R2BreadcrumbsProps {
 }
 
 export function R2Breadcrumbs({ bucketName, path, onClick }: R2BreadcrumbsProps) {
-  const [copied, setCopied] = React.useState(false);
-  const successToast = useSuccessToast();
-
-  const handleCopyLink = async () => {
-    const pathParam = Paths.toURLSearchParams(path);
-    const url = pathParam
-      ? `${window.location.origin}/explorer?${pathParam}`
-      : `${window.location.origin}/explorer`;
-
-    await navigator.clipboard.writeText(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1000);
-
-    successToast(
-      path.parts.length > 0
-        ? `Copied link to folder "${path.name}"`
-        : "Copied link to bucket root",
-      { title: "Link Copied" }
-    );
-  };
 
   // Common breadcrumb button component
   const BreadcrumbButton = ({
@@ -133,8 +113,6 @@ export function R2Breadcrumbs({ bucketName, path, onClick }: R2BreadcrumbsProps)
   };
 
   return (
-    <nav className="overflow-hidden">
-      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm h-10">
           <BreadcrumbButton path={Paths.getRoot()} isFirst>
             {bucketName}
@@ -142,20 +120,5 @@ export function R2Breadcrumbs({ bucketName, path, onClick }: R2BreadcrumbsProps)
           {renderBreadcrumbsContent()}
         </div>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleCopyLink}
-          className="h-8 px-2 ml-4 flex-shrink-0"
-          title="Copy shareable link to current folder"
-        >
-          {copied ? (
-            <Check className="h-4 w-4 text-green-600" />
-          ) : (
-            <Link className="h-4 w-4" />
-          )}
-        </Button>
-      </div>
-    </nav>
   );
 }

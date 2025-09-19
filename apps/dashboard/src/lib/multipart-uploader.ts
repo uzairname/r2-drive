@@ -1,210 +1,191 @@
 "use client";
 
-import type { 
-  MultipartUploadInit, 
-  MultipartUploadPart, 
+import type {
+  MultipartUploadInit,
+  MultipartUploadPart,
   MultipartUploadResult,
-  PresignedUrlInfo 
+  PresignedUrlInfo
 } from "@/types/upload";
 import { UPLOAD_CONFIG } from "@/config/app-config";
 import { err, makeError, ok } from "./result";
-import { Path } from "./path-system/path";
+import { Path, Paths } from "./path";
+import { ItemUploadProgress } from "@workspace/ui/components/upload-progress";
 
-export interface MultipartUploadProgress {
-  fileName: string;
-  totalSize: number;
-  uploadedBytes: number;
-  progress: number;
-  currentPart?: number;
-  totalParts?: number;
-  completed: boolean;
-  error?: string;
-}
+// export interface MultipartUploadProgress {
+//   fileName: string;
+//   totalSize: number;
+//   percentDone: number;
+//   totalParts?: number;
+//   completed: boolean;
+//   error?: string;
+// }
 
-export class MultipartUploader {
-  private onProgress?: (progress: MultipartUploadProgress) => void;
-  private chunkSize: number;
-  private maxConcurrentParts: number;
 
-  constructor(
-    onProgress?: (progress: MultipartUploadProgress) => void,
-    chunkSize = UPLOAD_CONFIG.DEFAULT_CHUNK_SIZE,
-    maxConcurrentParts = UPLOAD_CONFIG.MAX_CONCURRENT_PARTS
-  ) {
-    this.onProgress = onProgress;
-    this.chunkSize = chunkSize;
-    this.maxConcurrentParts = maxConcurrentParts;
-  }
+/**
+ * Upload files using client-side chunks and presigned URLs
+ */
+export async function uploadFileClientChunked(folder: Path, file: File, onProgress?: (progress: ItemUploadProgress) => void): Promise<MultipartUploadResult> {
 
-  private reportProgress(
-    fileName: string,
-    totalSize: number,
-    uploadedBytes: number,
-    currentPart?: number,
-    totalParts?: number,
-    completed = false,
-    error?: string
-  ) {
-    this.onProgress?.({
-      fileName,
-      totalSize,
-      uploadedBytes,
-      progress: Math.round((uploadedBytes / totalSize) * 100),
-      currentPart,
-      totalParts,
-      completed,
-      error
+  const filePath = Paths.filePath(folder, file);
+  const fileName = file.name;
+  const fileSize = file.size;
+  const totalParts = Math.ceil(fileSize / UPLOAD_CONFIG.MAX_CONCURRENT_PARTS);
+
+  console.log(`Starting multipart upload for ${fileName}, size: ${fileSize} bytes, total parts: ${totalParts}, path: ${folder}`);
+
+  try {
+    // Step 1: Initiate multipart upload
+    const initResponse = await fetch('/api/upload/multipart/initiate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        key: filePath.key,
+        contentType: file.type || 'application/octet-stream',
+        lastModified: file.lastModified
+      })
     });
-  }
 
-  async uploadFile(path: string, file: File): Promise<MultipartUploadResult> {
-    const fileName = file.name;
-    const fileSize = file.size;
-    const totalParts = Math.ceil(fileSize / this.chunkSize);
+    if (!initResponse.ok) {
+      throw new Error(`Failed to initiate upload: ${initResponse.statusText}`);
+    }
 
-    this.reportProgress(fileName, fileSize, 0, 0, totalParts);
+    const { uploadId, key }: MultipartUploadInit = await initResponse.json();
 
-    console.log(`Starting multipart upload for ${fileName}, size: ${fileSize} bytes, total parts: ${totalParts}, path: ${path}`);
+    // Step 2: Generate part numbers and get presigned URLs in batches
+    const parts: MultipartUploadPart[] = [];
+    let uploadedBytes = 0;
 
-    try {
-      // Step 1: Initiate multipart upload
-      const initResponse = await fetch('/api/upload/multipart/initiate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          key: path,
-          contentType: file.type || 'application/octet-stream'
-        })
-      });
+    
+    onProgress?.({
+      fileName,
+      percentDone: 0,
+      completed: false,
+      isMultipart: true
+    });
+    // Process parts in batches to respect concurrent limits
+    for (let i = 0; i < totalParts; i += UPLOAD_CONFIG.MAX_CONCURRENT_PARTS) {
+      const batchEnd = Math.min(i + UPLOAD_CONFIG.MAX_CONCURRENT_PARTS, totalParts);
+      const batchPartNumbers = Array.from({ length: batchEnd - i }, (_, idx) => i + idx + 1);
 
-      if (!initResponse.ok) {
-        throw new Error(`Failed to initiate upload: ${initResponse.statusText}`);
-      }
-
-      const { uploadId, key }: MultipartUploadInit = await initResponse.json();
-
-      // Step 2: Generate part numbers and get presigned URLs in batches
-      const parts: MultipartUploadPart[] = [];
-      let uploadedBytes = 0;
-
-      // Process parts in batches to respect concurrent limits
-      for (let i = 0; i < totalParts; i += this.maxConcurrentParts) {
-        const batchEnd = Math.min(i + this.maxConcurrentParts, totalParts);
-        const batchPartNumbers = Array.from({ length: batchEnd - i }, (_, idx) => i + idx + 1);
-
-        // Get presigned URLs for this batch
-        const urlsResponse = await fetch('/api/upload/multipart/presigned-urls', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            uploadId,
-            key,
-            partNumbers: batchPartNumbers
-          })
-        });
-
-        if (!urlsResponse.ok) {
-          throw new Error(`Failed to get presigned URLs: ${urlsResponse.statusText}`);
-        }
-
-        const { presignedUrls }: { presignedUrls: PresignedUrlInfo[] } = await urlsResponse.json();
-
-        // Upload parts in this batch concurrently
-        const batchPromises = presignedUrls.map(async ({ partNumber, url }) => {
-          const start = (partNumber - 1) * this.chunkSize;
-          const end = Math.min(start + this.chunkSize, fileSize);
-          const chunk = file.slice(start, end);
-
-          const uploadResponse = await fetch(url, {
-            method: 'PUT',
-            body: chunk,
-            headers: {
-              'Content-Type': 'application/octet-stream'
-            }
-          });
-
-          if (!uploadResponse.ok) {
-            throw new Error(`Failed to upload part ${partNumber}: ${uploadResponse.statusText}`);
-          }
-
-          const { etag } = await uploadResponse.json() as { etag: string };
-          uploadedBytes += chunk.size;
-
-          this.reportProgress(fileName, fileSize, uploadedBytes, partNumber, totalParts);
-
-          return {
-            partNumber,
-            etag
-          };
-        });
-
-        const batchResults = await Promise.all(batchPromises);
-        parts.push(...batchResults);
-
-        // Small delay between batches to prevent overwhelming the server
-        if (batchEnd < totalParts) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
-      }
-
-      // Step 3: Complete multipart upload
-      const completeResponse = await fetch('/api/upload/multipart/complete', {
+      // Get presigned URLs for this batch
+      const urlsResponse = await fetch('/api/upload/multipart/presigned-urls', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           uploadId,
           key,
-          parts: parts.sort((a, b) => a.partNumber - b.partNumber)
+          partNumbers: batchPartNumbers
         })
       });
 
-      if (!completeResponse.ok) {
-        throw new Error(`Failed to complete upload: ${completeResponse.statusText}`);
+      if (!urlsResponse.ok) {
+        throw new Error(`Failed to get presigned URLs: ${urlsResponse.statusText}`);
       }
 
-      this.reportProgress(fileName, fileSize, fileSize, totalParts, totalParts, true);
+      const { presignedUrls }: { presignedUrls: PresignedUrlInfo[] } = await urlsResponse.json();
 
-      return ok({
-        fileName,
-        isMultipart: true,
+      // Upload parts in this batch concurrently
+      const batchPromises = presignedUrls.map(async ({ partNumber, url }) => {
+        const start = (partNumber - 1) * UPLOAD_CONFIG.DEFAULT_CHUNK_SIZE;
+        const end = Math.min(start + UPLOAD_CONFIG.DEFAULT_CHUNK_SIZE, fileSize);
+        const chunk = file.slice(start, end);
+
+        const uploadResponse = await fetch(url, {
+          method: 'PUT',
+          body: chunk,
+          headers: {
+            'Content-Type': 'application/octet-stream'
+          }
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error(`Failed to upload part ${partNumber}: ${uploadResponse.statusText}`);
+        }
+
+        const { etag } = await uploadResponse.json() as { etag: string };
+        uploadedBytes += chunk.size;
+
+        onProgress?.({
+          fileName,
+          percentDone: Math.round((uploadedBytes / fileSize) * 100),
+          completed: false,
+          isMultipart: true
+        });
+
+        return {
+          partNumber,
+          etag
+        };
+      });
+
+      const batchResults = await Promise.all(batchPromises);
+      parts.push(...batchResults);
+
+      // Small delay between batches to prevent overwhelming the server
+      if (batchEnd < totalParts) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+
+    // Step 3: Complete multipart upload
+    const completeResponse = await fetch('/api/upload/multipart/complete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         uploadId,
-        parts
-      });
+        key,
+        parts: parts.sort((a, b) => a.partNumber - b.partNumber)
+      })
+    });
 
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.reportProgress(fileName, fileSize, 0, 0, totalParts, false, errorMessage);
-
-      return err({
-        error: makeError(error),
-        fileName,
-        isMultipart: true
-      });
+    if (!completeResponse.ok) {
+      throw new Error(`Failed to complete upload: ${completeResponse.statusText}`);
     }
+
+    // this.reportProgress(fileName, fileSize, fileSize, totalParts, totalParts, true);
+    onProgress?.({
+      fileName,
+      percentDone: 100,
+      completed: true,
+      isMultipart: true
+    });
+
+    return ok({
+      fileName,
+      uploadId,
+      parts,
+      isMultipart: true,
+    });
+
+  } catch (error) {
+    onProgress?.({
+      fileName,
+      percentDone: 0,
+      completed: false,
+      error: error instanceof Error ? error.message : String(error),
+      isMultipart: true
+    });
+    console.error(`Error uploading file ${fileName}:`, error);
+
+    return err({
+      error: makeError(error),
+      fileName,
+      isMultipart: true
+    });
+  }
+}
+
+/**
+ * Upload multiple files using multipart upload
+ */
+export async function uploadFilesMultipart(path: Path, files: File[], onProgress?: (progress: ItemUploadProgress) => void): Promise<MultipartUploadResult[]> {
+  const results: MultipartUploadResult[] = [];
+
+  // Process files sequentially to avoid overwhelming the server
+  for (const file of files) {
+    const result = await uploadFileClientChunked(path, file, onProgress);
+    results.push(result);
   }
 
-  /**
-   * Upload multiple files using multipart upload
-   */
-  async uploadMultipleFiles(path: Path, files: File[]): Promise<MultipartUploadResult[]> {
-    const results: MultipartUploadResult[] = [];
-    
-    // Process files sequentially to avoid overwhelming the server
-    for (const file of files) {
-      // Construct the full upload path using webkitRelativePath for folder uploads
-      const webkitRelativePath = file.webkitRelativePath;
-      const fullPath = webkitRelativePath
-        ? (path ? `${path}/${webkitRelativePath}` : webkitRelativePath)
-        : (path ? `${path}/${file.name}` : file.name);
-      
-
-      const result = await this.uploadFile(fullPath, file);
-      results.push(result);
-      
-      // Small delay between files
-      await new Promise(resolve => setTimeout(resolve, 200));
-    }
-    
-    return results;
-  }
+  return results;
 }

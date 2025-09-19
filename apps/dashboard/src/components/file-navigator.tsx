@@ -5,7 +5,7 @@ import { R2Breadcrumbs } from "./file-navigator/breadcrumbs";
 import { R2FileTable } from "./file-navigator/file-table";
 import { R2SelectionInfo } from "./file-navigator/selection-info";
 import { DeleteConfirmationDialog } from "./file-navigator/delete-confirmation-dialog";
-import { UploadProgress, UploadProgressItem } from "@workspace/ui/components/upload-progress";
+import { UploadProgress, ItemUploadProgress } from "@workspace/ui/components/upload-progress";
 import { CreateFolderDialog } from "./file-navigator/create-folder-dialog";
 import { FileActionButtons } from "./file-navigator/file-action-buttons";
 import { AdminOnly } from "@/hooks/use-admin";
@@ -15,35 +15,31 @@ import { useFileDownload } from "@/hooks/use-file-download";
 import { useDialogs } from "@/hooks/use-dialogs";
 import { useFileOperations } from "@/hooks/use-file-operations";
 import { useFileExplorer } from "@/hooks/use-file-explorer";
-import { Path, Paths } from "@/lib/path-system/path";
+import { Path, Paths } from "@/lib/path";
+import { CopyLinkButton } from "./file-navigator/copy-link-button";
 
 
 export function R2BucketNavigator() {
-  
+
   const fileExplorer = useFileExplorer();
   const fileOperations = useFileOperations();
-
-  const handleUpload = async (files: File[], currentPath: Path, onProgress?: (progress: UploadProgressItem) => void) => {
-    await fileOperations.handleUpload(files, currentPath, onProgress, () => {
-      fileExplorer.fetchItems(currentPath);
-    });
-  };
-
-  const handleDelete = async (keysToDelete: string[]) => {
-    await fileOperations.handleDelete(keysToDelete, () => {
-      fileExplorer.fetchItems(fileExplorer.path);
-    });
-  };
 
   // Extract upload functionality
   const upload = useFileUpload({
     currentPath: fileExplorer.path,
-    onUpload: handleUpload,
+    onUpload: async (files: File[], currentPath: Path, onProgress?: (progress: ItemUploadProgress) => void) => {
+      await fileOperations.handleUpload(files, currentPath, onProgress);
+      fileExplorer.fetchItems(currentPath);
+    },
   });
 
   // Extract delete functionality
   const deleteOps = useFileDelete({
-    onDelete: handleDelete,
+    onDelete: async (keysToDelete: string[]) => {
+      await fileOperations.handleDelete(keysToDelete, () => {
+        fileExplorer.fetchItems(fileExplorer.path);
+      });
+    }
   });
 
   // Extract download functionality
@@ -53,15 +49,23 @@ export function R2BucketNavigator() {
 
   // Extract dialog management
   const dialogs = useDialogs();
-
   return (
     <>
-
       {/* Main Content */}
-      <div className="flex-1 p-6">
-        {/* Breadcrumbs */}
-        <div className="mb-6">
-          <R2Breadcrumbs bucketName={fileExplorer.bucketName} path={fileExplorer.path} onClick={fileExplorer.navigateToFolder} />
+      <div className="flex-1 p-4">
+
+        {/* Breadcrumbs & Copy Link */}
+        <div className="mb-4">
+          <nav className="overflow-hidden">
+            <div className="flex items-center justify-between">
+              <R2Breadcrumbs
+                bucketName={fileExplorer.bucketName}
+                path={fileExplorer.path}
+                onClick={fileExplorer.navigateToFolder}
+              />
+              <CopyLinkButton path={fileExplorer.path} />
+            </div>
+          </nav>
         </div>
 
         {/* File Table */}
@@ -79,8 +83,8 @@ export function R2BucketNavigator() {
             onSort: fileExplorer.onSort,
           }}
         />
-        
-        {/* File Actions */}
+
+        {/* File Action Btns */}
         <AdminOnly>
           <FileActionButtons
             onUploadFile={upload.triggerFileUpload}
@@ -90,28 +94,28 @@ export function R2BucketNavigator() {
         </AdminOnly>
 
         {/* Selection Info */}
-        <R2SelectionInfo 
-          count={fileExplorer.selectedItemKeys.length} 
+        <R2SelectionInfo
+          count={fileExplorer.selectedItemKeys.length}
           onDeleteClick={() => deleteOps.onDeleteSelected(fileExplorer.selectedItemKeys, fileExplorer.items)}
           onDownload={() => download.downloadMultiple(fileExplorer.selectedItemKeys.map(i => Paths.fromR2Key(i)))}
           isDeleting={deleteOps.isDeleting}
           isDownloading={download.isDownloading}
         />
       </div>
-      
+
       {/* Hidden File Inputs */}
       <input
         type="file"
         ref={upload.fileInputRef}
         style={{ display: "none" }}
-        onChange={upload.handleFileUpload}
+        onChange={upload.upload}
         multiple
       />
       <input
         type="file"
         ref={upload.folderInputRef}
         style={{ display: "none" }}
-        onChange={upload.handleFolderUpload}
+        onChange={upload.upload}
         multiple
         {...{ webkitdirectory: "" }}
       />
@@ -119,8 +123,6 @@ export function R2BucketNavigator() {
       {/* Upload Progress Indicator */}
       <UploadProgress
         uploads={upload.uploadProgress}
-        isVisible={upload.showUploadProgress}
-        onClose={upload.closeUploadProgress}
       />
 
       {/* Create Folder Dialog */}

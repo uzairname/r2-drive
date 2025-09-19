@@ -59,11 +59,11 @@ export namespace Paths {
   /**
    * Returns a new Path instance representing a child object (file).
    */
-  export function getChild(path: Path, fileName: string): Path {
+  export function filePath(path: Path, file: File): Path {
     if (!path.isFolder) {
-      throw new Error("Cannot get child of a non-folder path");
+      throw new Error("Cannot create file path from a non-folder path");
     }
-    const parts = [...path.parts, fileName]
+    const parts = [...path.parts, file.webkitRelativePath || file.name];
     return createPath(parts, false)
   }
 

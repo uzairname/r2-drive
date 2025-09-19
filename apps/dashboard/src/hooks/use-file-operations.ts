@@ -1,23 +1,119 @@
-import { useMemo } from "react";
-import { useErrorToast, useSuccessToast, useWarningToast } from "@workspace/ui/components/toast";
-import { FileOperationsService } from "../services/file-operations";
+import { toast } from "sonner";
+import { Path } from "@/lib/path";
+import { ItemUploadProgress } from "@workspace/ui/components/upload-progress";
+import { deleteObjects } from "@/lib/actions";
+import { uploadFiles } from "@/lib/upload-utils";
+
 
 export function useFileOperations() {
-  const errorToast = useErrorToast();
-  const successToast = useSuccessToast();
-  const warningToast = useWarningToast();
 
-  const fileOperationsService = useMemo(() => {
-    return new FileOperationsService({
-      errorToast,
-      successToast,
-      warningToast,
-    });
-  }, [errorToast, successToast, warningToast]);
+  const handleUpload = async (
+    files: File[],
+    currentPath: Path,
+    onProgress?: (progress: ItemUploadProgress) => void,
+  ): Promise<void> => {
+
+    // Create upload manager with progress callback
+    // Start the upload
+    await uploadFiles(currentPath, files, onProgress);
+  }
+
+  const handleDelete = async (
+    keysToDelete: string[],
+    onSuccess?: () => void
+  ): Promise<void> => {
+
+    const result = await deleteObjects(keysToDelete);
+
+    if (!result.success) {
+      if (result.error.errors && result.error.errors.length > 0) {
+        // Show specific errors
+        const errorMessages = result.error.errors.map(e =>
+          `${e.objectKey}: ${e.error.message}`
+        ).join(', ');
+        toast.error(`Failed to delete some items`, {
+          description: errorMessages,
+        });
+      } else {
+        toast.error("Failed to delete selected items", {
+          description: "Deletion Error",
+          action: {
+            label: "Retry",
+            onClick: () => handleDelete(keysToDelete, onSuccess)
+          }
+        })
+      }
+      // return err(result.error.error || new Error("Unknown deletion error"));
+      return
+    } else {
+      const itemCount = keysToDelete.length;
+      toast.success(
+        `Successfully deleted ${itemCount} ${itemCount === 1 ? 'item' : 'items'}`,
+        { description: "Items Deleted" }
+      );
+
+      onSuccess?.();
+      // return ok({ itemCount });
+      return
+    }
+
+  }
+
+  const handleDownload = async (
+    selectedItems: Path[],
+  ): Promise<void> => {
+    let successCount = 0;
+    let errorCount = 0;
+    let skippedFolders = 0;
+
+    for (const item of selectedItems) {
+      try {
+        // Build the full key for the file
+        // For folders, we skip download as they're just markers
+        if (item.isFolder) {
+          skippedFolders++;
+          continue;
+        }
+
+        const url = `/api/download?key=${encodeURIComponent(item.key)}`;
+
+        // Create a download link
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = item.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        successCount++;
+      } catch (error) {
+        errorCount++;
+        toast.error(`Failed to download ${item.name}`, {
+          description: "Download Error"
+        });
+      }
+    }
+
+    // Show summary notification
+    if (successCount > 0 && errorCount === 0) {
+      toast.success(
+        `Started download of ${successCount} ${successCount === 1 ? 'file' : 'files'}`,
+        { description: "Download Started" }
+      );
+    }
+
+    if (skippedFolders > 0) {
+      toast.info(
+        `Skipped ${skippedFolders} ${skippedFolders === 1 ? 'folder' : 'folders'} (cannot download folders)`,
+        { description: "Download Notice" }
+      );
+    }
+    return
+  }
 
   return {
-    handleUpload: fileOperationsService.handleUpload.bind(fileOperationsService),
-    handleDelete: fileOperationsService.handleDelete.bind(fileOperationsService),
-    handleDownload: fileOperationsService.handleDownload.bind(fileOperationsService),
+    handleUpload,
+    handleDelete,
+    handleDownload,
   };
 }

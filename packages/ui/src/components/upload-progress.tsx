@@ -1,22 +1,26 @@
-import React from "react";
+import React, { use, useEffect } from "react";
 import { Progress } from "./progress";
 import { CheckCircle, XCircle, Upload, Zap } from "lucide-react";
 
-export interface UploadProgressItem {
+export interface ItemUploadProgress {
   fileName: string;
-  progress: number; // 0-100
+  percentDone: number;
   completed: boolean;
   error?: string;
   isMultipart?: boolean;
 }
 
-export interface UploadProgressProps {
-  uploads: UploadProgressItem[];
-  isVisible: boolean;
-  onClose?: () => void;
-}
 
-export function UploadProgress({ uploads, isVisible, onClose }: UploadProgressProps) {
+export function UploadProgress({ uploads }: { uploads: ItemUploadProgress[] }) {
+
+  const [isVisible, setIsVisible] = React.useState(true);
+
+  useEffect(() => {
+    if (uploads.length > 0) {
+      setIsVisible(true);
+    }
+  }, [uploads]);
+
   if (!isVisible || uploads.length === 0) return null;
 
   const completedUploads = uploads.filter(upload => upload.completed && !upload.error);
@@ -43,14 +47,14 @@ export function UploadProgress({ uploads, isVisible, onClose }: UploadProgressPr
             </div>
           )}
         </div>
-        {onClose && (
           <button
-            onClick={onClose}
+            onClick={() => {
+              setIsVisible(false);
+            }}
             className="text-muted-foreground hover:text-foreground"
           >
             ×
           </button>
-        )}
       </div>
       
       {/* Overall Progress */}
@@ -83,11 +87,11 @@ export function UploadProgress({ uploads, isVisible, onClose }: UploadProgressPr
                 </div>
               )}
               <span className="text-muted-foreground">
-                {upload.error ? "Failed" : upload.completed ? "Done" : `${upload.progress}%`}
+                {upload.error ? "Failed" : upload.completed ? "Done" : `${upload.percentDone}%`}
               </span>
             </div>
             {!upload.completed && !upload.error && (
-              <Progress value={upload.progress} className="h-1" />
+              <Progress value={upload.percentDone} className="h-1" />
             )}
             {upload.error && (
               <div className="text-destructive text-xs mt-1 truncate" title={upload.error}>

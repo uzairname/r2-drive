@@ -13,13 +13,13 @@ export interface DialogActions {
 export function useDialogs(): DialogState & DialogActions {
   const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
 
-  const openCreateFolderDialog = useCallback(() => {
+  const openCreateFolderDialog = () => {
     setShowCreateFolderDialog(true);
-  }, []);
+  };
 
-  const closeCreateFolderDialog = useCallback(() => {
+  const closeCreateFolderDialog = () => {
     setShowCreateFolderDialog(false);
-  }, []);
+  };
 
   return {
     // State

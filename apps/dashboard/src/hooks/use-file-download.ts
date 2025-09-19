@@ -1,4 +1,4 @@
-import { Path } from "@/lib/path-system/path";
+import { Path } from "@/lib/path";
 import { useState, useCallback } from "react";
 
 export interface DownloadState {
@@ -16,24 +16,16 @@ export function useFileDownload({ downloadItems }: {
   const [isDownloading, setIsDownloading] = useState(false);
 
   const downloadItem = useCallback(async (item: Path) => {
-    try {
-      await downloadItems([item]);
-    } catch (error) {
-      console.error("Error downloading item:", error);
-    }
+    setIsDownloading(true);
+    await downloadItems([item]);
+    setIsDownloading(false);
   }, [downloadItems]);
 
   const downloadMultiple = useCallback(async (selectedItems: Path[]) => {
     if (selectedItems.length === 0) return;
-    
     setIsDownloading(true);
-    try {
-      await downloadItems(selectedItems);
-    } catch (error) {
-      console.error("Error downloading items:", error);
-    } finally {
-      setIsDownloading(false);
-    }
+    await downloadItems(selectedItems);
+    setIsDownloading(false);
   }, [downloadItems]);
 
   return {

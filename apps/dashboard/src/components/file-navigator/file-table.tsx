@@ -6,7 +6,7 @@ import { Checkbox } from "@workspace/ui/components/checkbox";
 import { Button } from "@workspace/ui/components/button";
 import { truncateString } from "@workspace/ui/lib/utils";
 import { AdminOnly } from "@/hooks/use-admin";
-import { Path, Paths } from "@/lib/path-system/path";
+import { Path } from "@/lib/path";
 import { R2Item } from "@/lib/r2-client";
 
 function itemToIcon(item: R2Item) {
@@ -60,38 +60,52 @@ export function R2FileTable({
     if (tableSort.sortDirection === "asc") return <ArrowUp className="inline h-4 w-4 text-muted-foreground ml-1" />;
     return <ArrowDown className="inline h-4 w-4 text-muted-foreground ml-1" />;
   };
+
   return (
-    <div className="border border-border rounded-lg bg-card">
-      <Table>
-        <TableHeader>
-          <TableRow className="border-b border-border">
-            <TableHead className="w-12">
-              <Checkbox
-                checked={selectedItems.length === items.length && items.length > 0}
-                onCheckedChange={onSelectAll}
-                aria-label="Select all items"
-              />
-            </TableHead>
-            <TableHead className="text-left cursor-pointer select-none" onClick={() => tableSort?.onSort("name")}>Name{renderSortIcon("name")}</TableHead>
-            <TableHead className="text-left w-32 cursor-pointer select-none" onClick={() => tableSort?.onSort("size")}>Size{renderSortIcon("size")}</TableHead>
-            <TableHead className="text-left w-48 cursor-pointer select-none" onClick={() => tableSort?.onSort("lastModified")}>Last Modified{renderSortIcon("lastModified")}</TableHead>
-            <TableHead className="w-12"></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
+    <div className="border border-border rounded-lg bg-card overflow-hidden">
+      <div className="max-h-[70vh] overflow-y-auto">
+        <Table>
+          <TableHeader className="sticky top-0 bg-card z-10">
+            <TableRow className="border-b border-border">
+              <TableHead className="w-12 cursor-pointer bg-card" onClick={onSelectAll}>
+                <div className="flex items-center justify-center h-full w-full">
+                  <Checkbox
+                    checked={selectedItems.length === items.length && items.length > 0}
+                    onCheckedChange={onSelectAll}
+                    aria-label="Select all items"
+                    className="cursor-pointer"
+                  />
+                </div>
+              </TableHead>
+              <TableHead className="text-left cursor-pointer select-none bg-card" onClick={() => tableSort?.onSort("name")}>Name{renderSortIcon("name")}</TableHead>
+              <TableHead className="text-left w-32 cursor-pointer select-none bg-card" onClick={() => tableSort?.onSort("size")}>Size{renderSortIcon("size")}</TableHead>
+              <TableHead className="text-left w-48 cursor-pointer select-none bg-card" onClick={() => tableSort?.onSort("lastModified")}>Last Modified{renderSortIcon("lastModified")}</TableHead>
+              <TableHead className="w-12 bg-card"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
           {items.map((item) => (
             <TableRow
               key={item.path.key}
               className="border-b border-border hover:bg-muted/50 cursor-pointer group"
               onClick={() => item.path.isFolder && onFolderClick(item.path)}
             >
-              <TableCell>
-                <Checkbox
-                  checked={selectedItems.includes(item.path.key)}
-                  onCheckedChange={() => onItemSelect(item.path.key)}
-                  onClick={(e: React.MouseEvent<HTMLButtonElement>) => e.stopPropagation()}
-                  aria-label={`Select ${item.path.name}`}
-                />
+              <TableCell 
+                className="cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onItemSelect(item.path.key);
+                }}
+              >
+                <div className="flex items-center justify-center h-full w-full">
+                  <Checkbox
+                    checked={selectedItems.includes(item.path.key)}
+                    onCheckedChange={() => onItemSelect(item.path.key)}
+                    onClick={(e: React.MouseEvent<HTMLButtonElement>) => e.stopPropagation()}
+                    aria-label={`Select ${item.path.name}`}
+                    className="cursor-pointer"
+                  />
+                </div>
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-3">
@@ -150,6 +164,7 @@ export function R2FileTable({
           ))}
         </TableBody>
       </Table>
+      </div>
     </div>
   );
 }

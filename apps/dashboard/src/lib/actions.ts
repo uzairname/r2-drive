@@ -6,22 +6,23 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { UploadResult } from "@/types/upload";
 import { withAdminProtection } from "./auth-helpers";
 import { Result, ok, err, safeAsync } from "./result";
-import { Path, Paths } from "./path-system/path";
+import { Path, Paths } from "./path";
 
 // Functions that can be used from client components
 
 /**
- * Upload an object to R2 with automatic multipart for large files
+ * Upload an object to R2 using the server
  */
-async function _uploadObject(
-  path: string,
+async function _uploadSmallObject(
+  folder: Path,
   file: File,
+  onProgress?: (progress: { uploaded: number; total: number }) => void,
 ): Promise<UploadResult> {
   const client = new R2Client();
-  return await client.uploadObject(path, file);
+  return await client.uploadSmallObject(folder, file, onProgress);
 }
 
-export const uploadObject = withAdminProtection(_uploadObject);
+export const uploadSmallObject = withAdminProtection(_uploadSmallObject);
 
 /**
  * List files and folders in a folder
@@ -64,5 +65,7 @@ export const deleteObjects = withAdminProtection(_deleteObjects);
  * Get the R2 bucket name from Cloudflare environment
  */
 export async function getBucketName(): Promise<string> {
+  // throw 0
+  console.log("Fetching R2 bucket name from environment");
   return getCloudflareContext().env.R2_BUCKET_NAME;
 }

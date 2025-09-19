@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { isUserAdmin } from "./auth-helpers";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 /**
  * API route middleware to check if the current user is an admin
  */
 export async function requireAdminAPI(request: NextRequest): Promise<NextResponse | null> {
   try {
-    const token = await getToken({ req: request });
+    const { env } = getCloudflareContext();
+    const token = await getToken({ 
+      req: request,
+      secret: env.AUTH_SECRET
+    });
     
     if (!token || !token.email) {
       return NextResponse.json(
@@ -42,11 +47,6 @@ export function withAdminAPIProtection<T extends any[]>(
   handler: (request: NextRequest, ...args: T) => Promise<NextResponse>
 ) {
   return async (request: NextRequest, ...args: T): Promise<NextResponse> => {
-    const adminCheckResult = await requireAdminAPI(request);
-    if (adminCheckResult) {
-      return adminCheckResult; // Return the error response
-    }
-    
-    return handler(request, ...args);
+    return await requireAdminAPI(request) ?? handler(request, ...args); // Return the error response, if not run the handler
   };
 }

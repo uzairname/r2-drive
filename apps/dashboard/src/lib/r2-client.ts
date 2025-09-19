@@ -1,15 +1,16 @@
-import { UPLOAD_CONFIG } from "@/config/app-config";
-import { UploadData } from "@/types/upload";
+import { UPLOAD_CONFIG, R2_CONFIG } from "@/config/app-config";
+import { UploadData, UploadResult } from "@/types/upload";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { revalidatePath } from "next/cache";
 import { Result, ok, err, safeAsync, makeError } from "./result";
-import { Path, Paths } from "./path-system/path";
+import { Path, Paths } from "./path";
 
 // Represents file/folder structure
 export interface R2Item {
   path: Path;
   size: number;
   lastModified?: Date;
+  originalLastModified?: Date; // Original file modification time
   etag: string;
 }
 
@@ -47,7 +48,7 @@ export class R2Client {
   }
 
   /**
-   * Lists all objects with the given prefix
+   * Lists all objects in the given folder
    */
   private async listR2Objects(
     folder: Path,
@@ -63,7 +64,7 @@ export class R2Client {
       const options: R2ListOptions = {
         prefix: folder.key,
         delimiter,
-        limit: 1000,
+        limit: R2_CONFIG.LIST_LIMIT,
         cursor,
       };
 
@@ -107,6 +108,9 @@ export class R2Client {
 
     const objects = regularObjects.map((obj) => {
       const path = Paths.fromR2Key(obj.key);
+      // Note: R2 list operations don't include custom metadata
+      // We use the R2 upload timestamp for now, but could enhance
+      // this with a separate metadata service if needed
       return {
         path: path,
         size: obj.size,
@@ -121,7 +125,6 @@ export class R2Client {
       size: 0,
       lastModified: undefined,
       etag: "",
-      isFolder: true,
     }));
 
     return {
@@ -152,25 +155,72 @@ export class R2Client {
     });
   }
 
-  async uploadObject(
-    path: string,
+  /**
+   * Get object metadata including custom metadata
+   */
+  async getObjectMetadata(key: string): Promise<Result<{
+    size: number;
+    lastModified: Date;
+    originalLastModified?: Date;
+    etag: string;
+    customMetadata?: Record<string, string>;
+  } | null, Error>> {
+    return safeAsync(async () => {
+      const obj = await this.r2.head(key);
+      if (!obj) return null;
+
+      const originalLastModified = obj.customMetadata?.originalLastModified
+        ? new Date(parseInt(obj.customMetadata.originalLastModified))
+        : undefined;
+
+      return {
+        size: obj.size,
+        lastModified: obj.uploaded,
+        originalLastModified,
+        etag: obj.etag,
+        customMetadata: obj.customMetadata
+      };
+    });
+  }
+
+  /**
+   * Uploads an object whose size is below the multipart threshold, from the server
+   */
+  async uploadSmallObject(
+    folder: Path,
     file: File,
-  ): Promise<Result<UploadData, UploadData & { error: Error }>> {
+    onProgress?: (progress: { uploaded: number; total: number }) => void,
+  ): Promise<UploadResult> {
+
+    // Ensure size is below multipart threshold
+    if (file.size > UPLOAD_CONFIG.MULTIPART_THRESHOLD_BYTES) {
+      return err({
+        fileName: file.name,
+        error: new Error(`File ${file.name} is too large for single upload, exceeds ${UPLOAD_CONFIG.MULTIPART_THRESHOLD_BYTES / (1024 * 1024)} MB`),
+      });
+    }
 
     try {
-      const key = path;
+      const key = Paths.filePath(folder, file).key;
 
-      const arrayBuffer = await file.arrayBuffer();
-      const isLargeFile = arrayBuffer.byteLength > UPLOAD_CONFIG.LARGE_FILE_THRESHOLD;
-      // Report initial progress
+      // Prepare metadata with original lastModified time
+      const customMetadata = {
+        originalLastModified: file.lastModified.toString(),
+        originalName: file.name
+      };
 
-      if (isLargeFile) {
-        // Use multipart upload for large files
-        await this.putObjectMultipart(key, arrayBuffer);
-      } else {
-        // Use regular upload for smaller files
-        await this.putObject(key, arrayBuffer);
-      }
+      const data = await file.arrayBuffer();
+
+      // Prepare R2 put options with custom metadata
+      const putOptions: R2PutOptions = {
+        customMetadata,
+      };
+
+      const totalSize = data.byteLength;
+
+      onProgress?.({ uploaded: 0, total: totalSize });
+      await this.r2.put(key, data, putOptions);
+      onProgress?.({ uploaded: totalSize, total: totalSize });
 
       return ok({
         fileName: file.name,
@@ -181,77 +231,6 @@ export class R2Client {
         fileName: file.name,
         error: makeError(error)
       });
-    }
-  }
-
-
-  /**
-   * Upload an object to the bucket (optimized for size)
-   */
-  async putObject(
-    key: string,
-    data: ReadableStream | ArrayBuffer | string,
-    onProgress?: (progress: { uploaded: number; total: number }) => void
-  ): Promise<R2Object | null> {
-    // For ArrayBuffer, check size and use multipart if needed
-    if (data instanceof ArrayBuffer && data.byteLength > 50 * 1024 * 1024) { // 50MB threshold
-      return await this.putObjectMultipart(key, data);
-    }
-
-    // For smaller files, simulate progress since R2 doesn't provide upload progress
-    if (onProgress && data instanceof ArrayBuffer) {
-      const totalSize = data.byteLength;
-      onProgress({ uploaded: 0, total: totalSize });
-
-      const result = await this.r2.put(key, data);
-
-      onProgress({ uploaded: totalSize, total: totalSize });
-      return result;
-    }
-
-    return await this.r2.put(key, data);
-  }
-
-  /**
-   * Upload large objects using multipart upload
-   */
-  async putObjectMultipart(
-    key: string,
-    data: ArrayBuffer,
-  ): Promise<R2Object | null> {
-    const chunkSize = 5 * 1024 * 1024; // 5MB chunks (minimum for multipart)
-    const totalSize = data.byteLength;
-    const totalParts = Math.ceil(totalSize / chunkSize);
-
-    // Create multipart upload
-    const multipartUpload = await this.r2.createMultipartUpload(key);
-    const uploadId = multipartUpload.uploadId;
-
-    const parts: R2UploadedPart[] = [];
-    let uploadedBytes = 0;
-
-    try {
-      // Upload each part
-      for (let partNumber = 1; partNumber <= totalParts; partNumber++) {
-        const start = (partNumber - 1) * chunkSize;
-        const end = Math.min(start + chunkSize, totalSize);
-        const chunk = data.slice(start, end);
-
-        const part = await multipartUpload.uploadPart(partNumber, chunk);
-        parts.push({
-          partNumber,
-          etag: part.etag
-        });
-
-        uploadedBytes += chunk.byteLength;
-      }
-
-      // Complete the multipart upload
-      return await multipartUpload.complete(parts);
-    } catch (error) {
-      // Abort the multipart upload on error
-      await multipartUpload.abort();
-      throw error;
     }
   }
 
@@ -324,7 +303,7 @@ export class R2Client {
     if (itemPaths.length === 0) return;
 
     // Delete in batches if we have too many keys
-    const batchSize = 1000; // R2 limit for bulk operations
+    const batchSize = R2_CONFIG.BATCH_DELETE_SIZE; // R2 limit for bulk operations
     for (let i = 0; i < itemPaths.length; i += batchSize) {
       const batch = itemPaths.slice(i, i + batchSize).map(item => item.key)
       await this.r2.delete(batch);
@@ -343,7 +322,7 @@ export class R2Client {
     if (!name || !name.trim()) {
       return err("Folder name cannot be empty");
     }
-    
+
     // Remove invalid characters
     const sanitizedName = name.trim().replace(/[<>:"/\\|?*]/g, "");
     if (sanitizedName !== name.trim()) {
@@ -354,8 +333,7 @@ export class R2Client {
     await this.r2.put(folderKey, "");
 
     // Revalidate the current path to refresh the UI
-    const revalidationPath = baseFolder ? `/${baseFolder}` : "/";
-    revalidatePath(revalidationPath);
+    revalidatePath("/explorer");
 
     return ok(undefined);
   }
