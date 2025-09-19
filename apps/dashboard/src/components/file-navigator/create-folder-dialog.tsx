@@ -1,114 +1,113 @@
-"use client";
+'use client'
 
-import { useState, useEffect } from "react";
-import { Button } from "@workspace/ui/components/button";
-import { Input } from "@workspace/ui/components/input";
-import { Label } from "@workspace/ui/components/label";
+import { Button } from '@workspace/ui/components/button'
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-} from "@workspace/ui/components/dialog";
+} from '@workspace/ui/components/dialog'
+import { Input } from '@workspace/ui/components/input'
+import { useEffect, useState } from 'react'
 
 interface CreateFolderDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onCreateFolder: (folderName: string) => Promise<{ success: boolean; errorMessage?: string }>;
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onCreateFolder: (folderName: string) => Promise<{ success: boolean; errorMessage?: string }>
 }
 
 export function CreateFolderDialog({
   open,
   onOpenChange,
-  onCreateFolder
+  onCreateFolder,
 }: CreateFolderDialogProps) {
-  const [folderName, setFolderName] = useState("");
-  const [isCreating, setIsCreating] = useState(false);
-  const [serverError, setServerError] = useState<string | null>(null);
-  const [validationError, setValidationError] = useState<string | null>(null);
+  const [folderName, setFolderName] = useState('')
+  const [isCreating, setIsCreating] = useState(false)
+  const [serverError, setServerError] = useState<string | null>(null)
+  const [validationError, setValidationError] = useState<string | null>(null)
 
   // Real-time validation as user types
   useEffect(() => {
-    if (folderName === "") {
-      setValidationError(null);
-      return;
+    if (folderName === '') {
+      setValidationError(null)
+      return
     }
 
-    const trimmedName = folderName.trim();
-    
+    const trimmedName = folderName.trim()
+
     if (!trimmedName) {
-      setValidationError("Folder name cannot be empty");
-      return;
+      setValidationError('Folder name cannot be empty')
+      return
     }
 
     // Check for invalid characters
-    const invalidChars = folderName.match(/[<>:"/\\|?*]/g);
+    const invalidChars = folderName.match(/[<>:"/\\|?*]/g)
     if (invalidChars) {
-      const uniqueChars = [...new Set(invalidChars)].join(', ');
-      setValidationError(`Invalid characters: ${uniqueChars}`);
-      return;
+      const uniqueChars = [...new Set(invalidChars)].join(', ')
+      setValidationError(`Invalid characters: ${uniqueChars}`)
+      return
     }
 
     // Check for leading/trailing spaces
     if (folderName !== trimmedName) {
-      setValidationError("Folder name cannot start or end with spaces");
-      return;
+      setValidationError('Folder name cannot start or end with spaces')
+      return
     }
 
     // Check length (reasonable limit)
     if (trimmedName.length > 255) {
-      setValidationError("Folder name is too long (max 255 characters)");
-      return;
+      setValidationError('Folder name is too long (max 255 characters)')
+      return
     }
 
-    setValidationError(null);
-  }, [folderName]);
+    setValidationError(null)
+  }, [folderName])
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!folderName.trim() || validationError || isCreating) return;
+    e.preventDefault()
+    if (!folderName.trim() || validationError || isCreating) return
 
-    setIsCreating(true);
-    setServerError(null);
+    setIsCreating(true)
+    setServerError(null)
 
     try {
-      const result = await onCreateFolder(folderName.trim());
+      const result = await onCreateFolder(folderName.trim())
       if (result.success) {
-        setFolderName("");
-        setValidationError(null);
-        onOpenChange(false);
+        setFolderName('')
+        setValidationError(null)
+        onOpenChange(false)
       } else {
-        setServerError(result.errorMessage || "Failed to create folder");
+        setServerError(result.errorMessage || 'Failed to create folder')
       }
     } catch (err) {
-      setServerError("An unexpected error occurred");
+      setServerError('An unexpected error occurred')
     } finally {
-      setIsCreating(false);
+      setIsCreating(false)
     }
-  };
+  }
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!isCreating) {
       if (!newOpen) {
-        setFolderName("");
-        setValidationError(null);
-        setServerError(null);
+        setFolderName('')
+        setValidationError(null)
+        setServerError(null)
       }
-      onOpenChange(newOpen);
+      onOpenChange(newOpen)
     }
-  };
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFolderName(e.target.value);
+    setFolderName(e.target.value)
     // Clear server error when user starts typing again
     if (serverError) {
-      setServerError(null);
+      setServerError(null)
     }
-  };
+  }
 
-  const hasError = validationError || serverError;
-  const canSubmit = folderName.trim() && !validationError && !isCreating;
+  const hasError = validationError || serverError
+  const canSubmit = folderName.trim() && !validationError && !isCreating
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -127,7 +126,7 @@ export function CreateFolderDialog({
                 onChange={handleInputChange}
                 disabled={isCreating}
                 autoFocus
-                className={hasError ? "border-destructive focus-visible:ring-destructive/20" : ""}
+                className={hasError ? 'border-destructive focus-visible:ring-destructive/20' : ''}
               />
               {validationError && (
                 <p className="text-sm text-destructive animate-in slide-in-from-top-1">
@@ -150,15 +149,12 @@ export function CreateFolderDialog({
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={!canSubmit}
-            >
+            <Button type="submit" disabled={!canSubmit}>
               Create
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

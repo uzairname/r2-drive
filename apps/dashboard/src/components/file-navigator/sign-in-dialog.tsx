@@ -1,24 +1,23 @@
-"use client";
+'use client'
 
-import React from "react";
+import { Button } from '@workspace/ui/components/button'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@workspace/ui/components/dialog";
-import { Button } from "@workspace/ui/components/button";
-import { Chrome, HardDrive } from "lucide-react";
-import { signIn } from "next-auth/react";
+} from '@workspace/ui/components/dialog'
+import { Chrome, HardDrive } from 'lucide-react'
+import { signIn } from 'next-auth/react'
 
 export interface SignInDialogProps {
   /** Whether the dialog is open */
-  open?: boolean;
+  open?: boolean
   /** Callback when dialog open state changes */
-  setShowDialog?: (open: boolean) => void;
+  setShowDialog?: (open: boolean) => void
   /** Whether the sign-in process is loading */
-  isLoading?: boolean;
+  isLoading?: boolean
 }
 
 export function SignInDialog({
@@ -26,7 +25,6 @@ export function SignInDialog({
   setShowDialog: onOpenChange,
   isLoading = false,
 }: SignInDialogProps) {
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -43,19 +41,19 @@ export function SignInDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-              <Button
-                variant="outline"
-                className="w-full flex items-center gap-2"
-                onClick={() => {
-                  signIn("google");
-                  if (onOpenChange) onOpenChange(false); // Close dialog after sign in
-                }}
-              >
-                <Chrome className="mr-3 h-5 w-5" />
-                {isLoading ? "Signing in..." : "Continue with Google"}
-              </Button>
+          <Button
+            variant="outline"
+            className="w-full flex items-center gap-2"
+            onClick={() => {
+              signIn('google')
+              if (onOpenChange) onOpenChange(false) // Close dialog after sign in
+            }}
+          >
+            <Chrome className="mr-3 h-5 w-5" />
+            {isLoading ? 'Signing in...' : 'Continue with Google'}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

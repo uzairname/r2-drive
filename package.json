@@ -8,6 +8,7 @@
     "dev": "turbo run dev",
     "build": "turbo run build",
     "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
     "deploy": "turbo run deploy --filter=dashboard",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -16,12 +17,13 @@
   "license": "ISC",
   "packageManager": "pnpm@10.16.1",
   "devDependencies": {
+    "@types/react": "^19.1.13",
     "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
     "prettier": "^3.6.2",
-    "typescript": "5.7.3",
-    "@types/react": "^19.1.13",
-    "turbo": "^2.5.6"
+    "prettier-plugin-organize-imports": "^4.3.0",
+    "turbo": "^2.5.6",
+    "typescript": "5.7.3"
   },
   "dependencies": {
     "shadcn-ui": "^0.9.5"

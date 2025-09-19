@@ -1,9 +1,8 @@
-"use client";
+'use client'
 
-import React, { Suspense } from "react";
-import { R2BucketNavigator } from "@/components/file-navigator";
-import { Header } from "@/components/header";
-
+import { R2BucketNavigator } from '@/components/file-navigator'
+import { Header } from '@/components/header'
+import { Suspense } from 'react'
 
 export default function ExplorerPage() {
   return (
@@ -13,5 +12,5 @@ export default function ExplorerPage() {
         <R2BucketNavigator />
       </Suspense>
     </div>
-  );
+  )
 }

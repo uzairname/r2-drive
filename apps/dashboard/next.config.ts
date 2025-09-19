@@ -1,19 +1,17 @@
-import type { NextConfig } from "next";
-import { initOpenNextCloudflareForDev } from '@opennextjs/cloudflare';
+import { initOpenNextCloudflareForDev } from '@opennextjs/cloudflare'
+import type { NextConfig } from 'next'
 
 // added by create cloudflare to enable calling `getCloudflareContext()` in `next dev`
-initOpenNextCloudflareForDev();
-
+initOpenNextCloudflareForDev()
 
 const nextConfig: NextConfig = {
   /* config options here */
-  transpilePackages: ["@workspace/ui"],
+  transpilePackages: ['@workspace/ui'],
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb',
     },
-  }
-};
+  },
+}
 
-export default nextConfig;
-
+export default nextConfig

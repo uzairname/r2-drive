@@ -1,36 +1,35 @@
-import React, { use, useEffect } from "react";
-import { Progress } from "./progress";
-import { CheckCircle, XCircle, Upload, Zap } from "lucide-react";
+import React, { useEffect } from 'react'
+
+import { CheckCircle, Upload, XCircle, Zap } from 'lucide-react'
+
+import { Progress } from './progress'
 
 export interface ItemUploadProgress {
-  fileName: string;
-  percentDone: number;
-  completed: boolean;
-  error?: string;
-  isMultipart?: boolean;
+  fileName: string
+  percentDone: number
+  completed: boolean
+  error?: string
+  isMultipart?: boolean
 }
 
-
 export function UploadProgress({ uploads }: { uploads: ItemUploadProgress[] }) {
-
-  const [isVisible, setIsVisible] = React.useState(true);
+  const [isVisible, setIsVisible] = React.useState(true)
 
   useEffect(() => {
     if (uploads.length > 0) {
-      setIsVisible(true);
+      setIsVisible(true)
     }
-  }, [uploads]);
+  }, [uploads])
 
-  if (!isVisible || uploads.length === 0) return null;
+  if (!isVisible || uploads.length === 0) return null
 
-  const completedUploads = uploads.filter(upload => upload.completed && !upload.error);
-  const failedUploads = uploads.filter(upload => upload.error);
-  
-  const overallProgress = uploads.length > 0 
-    ? Math.round((completedUploads.length / uploads.length) * 100)
-    : 0;
+  const completedUploads = uploads.filter((upload) => upload.completed && !upload.error)
+  const failedUploads = uploads.filter((upload) => upload.error)
 
-  const hasLargeFiles = uploads.some(upload => upload.isMultipart);
+  const overallProgress =
+    uploads.length > 0 ? Math.round((completedUploads.length / uploads.length) * 100) : 0
+
+  const hasLargeFiles = uploads.some((upload) => upload.isMultipart)
 
   return (
     <div className="fixed bottom-4 right-4 w-80 bg-card border border-border rounded-lg shadow-lg p-4 z-50">
@@ -47,16 +46,16 @@ export function UploadProgress({ uploads }: { uploads: ItemUploadProgress[] }) {
             </div>
           )}
         </div>
-          <button
-            onClick={() => {
-              setIsVisible(false);
-            }}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            ×
-          </button>
+        <button
+          onClick={() => {
+            setIsVisible(false)
+          }}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          ×
+        </button>
       </div>
-      
+
       {/* Overall Progress */}
       <div className="mb-3">
         <div className="flex justify-between text-xs text-muted-foreground mb-1">
@@ -87,7 +86,7 @@ export function UploadProgress({ uploads }: { uploads: ItemUploadProgress[] }) {
                 </div>
               )}
               <span className="text-muted-foreground">
-                {upload.error ? "Failed" : upload.completed ? "Done" : `${upload.percentDone}%`}
+                {upload.error ? 'Failed' : upload.completed ? 'Done' : `${upload.percentDone}%`}
               </span>
             </div>
             {!upload.completed && !upload.error && (
@@ -105,9 +104,7 @@ export function UploadProgress({ uploads }: { uploads: ItemUploadProgress[] }) {
       {/* Summary */}
       {(completedUploads.length > 0 || failedUploads.length > 0) && (
         <div className="mt-3 pt-2 border-t border-border text-xs text-muted-foreground">
-          {completedUploads.length > 0 && (
-            <div>✓ {completedUploads.length} completed</div>
-          )}
+          {completedUploads.length > 0 && <div>✓ {completedUploads.length} completed</div>}
           {failedUploads.length > 0 && (
             <div className="text-destructive">✗ {failedUploads.length} failed</div>
           )}
@@ -117,5 +114,5 @@ export function UploadProgress({ uploads }: { uploads: ItemUploadProgress[] }) {
         </div>
       )}
     </div>
-  );
+  )
 }

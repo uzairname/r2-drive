@@ -187,17 +187,12 @@
                     "description": "The destination for this logged message"
                   }
                 },
-                "required": [
-                  "name",
-                  "destination"
-                ],
+                "required": ["name", "destination"],
                 "additionalProperties": false
               }
             }
           },
-          "required": [
-            "bindings"
-          ],
+          "required": ["bindings"],
           "additionalProperties": false,
           "description": "List of bindings that you will send to logfwdr",
           "default": {
@@ -217,18 +212,13 @@
           "properties": {
             "mode": {
               "type": "string",
-              "enum": [
-                "off",
-                "smart"
-              ]
+              "enum": ["off", "smart"]
             },
             "hint": {
               "type": "string"
             }
           },
-          "required": [
-            "mode"
-          ],
+          "required": ["mode"],
           "additionalProperties": false,
           "description": "Specify how the Worker should be located to minimize round-trip time.\n\nMore details: https://developers.cloudflare.com/workers/platform/smart-placement/"
         },
@@ -242,10 +232,7 @@
         },
         "compliance_region": {
           "type": "string",
-          "enum": [
-            "public",
-            "fedramp_high"
-          ],
+          "enum": ["public", "fedramp_high"],
           "description": "Specify the compliance region mode of the Worker.\n\nAlthough if the user does not specify a compliance region, the default is `public`, it can be set to `undefined` in configuration to delegate to the CLOUDFLARE_COMPLIANCE_REGION environment variable."
         },
         "define": {
@@ -278,9 +265,7 @@
               "$ref": "#/definitions/DurableObjectBindings"
             }
           },
-          "required": [
-            "bindings"
-          ],
+          "required": ["bindings"],
           "additionalProperties": false,
           "description": "A list of durable objects that your Worker should be bound to.\n\nFor more information about Durable Objects, see the documentation at https://developers.cloudflare.com/workers/learning/using-durable-objects\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.\n\nFor reference, see https://developers.cloudflare.com/workers/wrangler/configuration/#durable-objects",
           "default": {
@@ -330,9 +315,7 @@
                 "description": "Whether the KV namespace should be remote or not"
               }
             },
-            "required": [
-              "binding"
-            ],
+            "required": ["binding"],
             "additionalProperties": false
           },
           "description": "These specify any Workers KV Namespaces you want to access from inside your Worker.\n\nTo learn more about KV Namespaces, see the documentation at https://developers.cloudflare.com/workers/learning/how-kv-works\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.\n\nFor reference, see https://developers.cloudflare.com/workers/wrangler/configuration/#kv-namespaces",
@@ -363,9 +346,7 @@
                 "description": "Whether the binding should be remote or not"
               }
             },
-            "required": [
-              "name"
-            ],
+            "required": ["name"],
             "additionalProperties": false
           },
           "description": "These specify bindings to send email from inside your Worker.\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.\n\nFor reference, see https://developers.cloudflare.com/workers/wrangler/configuration/#email-bindings",
@@ -396,10 +377,7 @@
                     "description": "Whether the Queue producer should be remote or not"
                   }
                 },
-                "required": [
-                  "binding",
-                  "queue"
-                ],
+                "required": ["binding", "queue"],
                 "additionalProperties": false
               },
               "description": "Producer bindings"
@@ -434,10 +412,7 @@
                     "description": "The queue to send messages that failed to be consumed."
                   },
                   "max_concurrency": {
-                    "type": [
-                      "number",
-                      "null"
-                    ],
+                    "type": ["number", "null"],
                     "description": "The maximum number of concurrent consumer Worker invocations. Leaving this unset will allow your consumer to scale to the maximum concurrency needed to keep up with the message backlog."
                   },
                   "visibility_timeout_ms": {
@@ -449,9 +424,7 @@
                     "description": "The number of seconds to wait before retrying a message"
                   }
                 },
-                "required": [
-                  "queue"
-                ],
+                "required": ["queue"],
                 "additionalProperties": false
               },
               "description": "Consumer configuration"
@@ -490,9 +463,7 @@
                 "description": "Whether the R2 bucket should be remote or not"
               }
             },
-            "required": [
-              "binding"
-            ],
+            "required": ["binding"],
             "additionalProperties": false
           },
           "description": "Specifies R2 buckets that are bound to this Worker environment.\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.\n\nFor reference, see https://developers.cloudflare.com/workers/wrangler/configuration/#r2-buckets",
@@ -536,9 +507,7 @@
                 "description": "Whether the D1 database should be remote or not"
               }
             },
-            "required": [
-              "binding"
-            ],
+            "required": ["binding"],
             "additionalProperties": false
           },
           "description": "Specifies D1 databases that are bound to this Worker environment.\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.\n\nFor reference, see https://developers.cloudflare.com/workers/wrangler/configuration/#d1-databases",
@@ -562,10 +531,7 @@
                 "description": "Whether the Vectorize index should be remote or not"
               }
             },
-            "required": [
-              "binding",
-              "index_name"
-            ],
+            "required": ["binding", "index_name"],
             "additionalProperties": false
           },
           "description": "Specifies Vectorize indexes that are bound to this Worker environment.\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.\n\nFor reference, see https://developers.cloudflare.com/workers/wrangler/configuration/#vectorize-indexes",
@@ -589,10 +555,7 @@
                 "description": "The local database connection string for `wrangler dev`"
               }
             },
-            "required": [
-              "binding",
-              "id"
-            ],
+            "required": ["binding", "id"],
             "additionalProperties": false
           },
           "description": "Specifies Hyperdrive configs that are bound to this Worker environment.\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.\n\nFor reference, see https://developers.cloudflare.com/workers/wrangler/configuration/#hyperdrive",
@@ -625,10 +588,7 @@
                 "description": "Whether the service binding should be remote or not"
               }
             },
-            "required": [
-              "binding",
-              "service"
-            ],
+            "required": ["binding", "service"],
             "additionalProperties": false
           },
           "description": "Specifies service bindings (Worker-to-Worker) that are bound to this Worker environment.\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.\n\nFor reference, see https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings",
@@ -648,9 +608,7 @@
                 "description": "The name of this dataset to write to."
               }
             },
-            "required": [
-              "binding"
-            ],
+            "required": ["binding"],
             "additionalProperties": false
           },
           "description": "Specifies analytics engine datasets that are bound to this Worker environment.\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.\n\nFor reference, see https://developers.cloudflare.com/workers/wrangler/configuration/#analytics-engine-datasets",
@@ -667,9 +625,7 @@
               "description": "Whether the Browser binding should be remote or not"
             }
           },
-          "required": [
-            "binding"
-          ],
+          "required": ["binding"],
           "additionalProperties": false,
           "description": "A browser that will be usable from the Worker.\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.\n\nFor reference, see https://developers.cloudflare.com/workers/wrangler/configuration/#browser-rendering",
           "default": {}
@@ -688,9 +644,7 @@
               "description": "Whether the AI binding should be remote or not"
             }
           },
-          "required": [
-            "binding"
-          ],
+          "required": ["binding"],
           "additionalProperties": false,
           "description": "Binding to the AI project.\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.\n\nFor reference, see https://developers.cloudflare.com/workers/wrangler/configuration/#workers-ai",
           "default": {}
@@ -706,9 +660,7 @@
               "description": "Whether the Images binding should be remote or not"
             }
           },
-          "required": [
-            "binding"
-          ],
+          "required": ["binding"],
           "additionalProperties": false,
           "description": "Binding to Cloudflare Images\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.\n\nFor reference, see https://developers.cloudflare.com/workers/wrangler/configuration/#images",
           "default": {}
@@ -720,9 +672,7 @@
               "type": "string"
             }
           },
-          "required": [
-            "binding"
-          ],
+          "required": ["binding"],
           "additionalProperties": false,
           "description": "Binding to the Worker Version's metadata"
         },
@@ -751,22 +701,15 @@
                           "package": {
                             "type": "string",
                             "description": "Package is the bare specifier of the package that exposes plugins to integrate into Miniflare via a named `plugins` export.",
-                            "examples": [
-                              "@cloudflare/my-external-miniflare-plugin"
-                            ]
+                            "examples": ["@cloudflare/my-external-miniflare-plugin"]
                           },
                           "name": {
                             "type": "string",
                             "description": "Plugin is the name of the plugin exposed by the package.",
-                            "examples": [
-                              "MY_UNSAFE_PLUGIN"
-                            ]
+                            "examples": ["MY_UNSAFE_PLUGIN"]
                           }
                         },
-                        "required": [
-                          "package",
-                          "name"
-                        ],
+                        "required": ["package", "name"],
                         "additionalProperties": false
                       },
                       "options": {
@@ -775,16 +718,11 @@
                         "description": "Optional mapping of unsafe bindings names to options provided for the plugin."
                       }
                     },
-                    "required": [
-                      "plugin"
-                    ],
+                    "required": ["plugin"],
                     "additionalProperties": false
                   }
                 },
-                "required": [
-                  "name",
-                  "type"
-                ],
+                "required": ["name", "type"],
                 "additionalProperties": {}
               },
               "description": "A set of bindings that should be put into a Worker's upload metadata without changes. These can be used to implement bindings for features that haven't released and aren't supported directly by wrangler or miniflare."
@@ -809,10 +747,7 @@
                       }
                     }
                   },
-                  "required": [
-                    "base_path",
-                    "source_schemas"
-                  ],
+                  "required": ["base_path", "source_schemas"],
                   "additionalProperties": false
                 },
                 {
@@ -822,9 +757,7 @@
                       "type": "string"
                     }
                   },
-                  "required": [
-                    "compiled_schema"
-                  ],
+                  "required": ["compiled_schema"],
                   "additionalProperties": false
                 }
               ],
@@ -853,10 +786,7 @@
                 "description": "Whether the mtls fetcher should be remote or not"
               }
             },
-            "required": [
-              "binding",
-              "certificate_id"
-            ],
+            "required": ["binding", "certificate_id"],
             "additionalProperties": false
           },
           "description": "Specifies a list of mTLS certificates that are bound to this Worker environment.\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.\n\nFor reference, see https://developers.cloudflare.com/workers/wrangler/configuration/#mtls-certificates",
@@ -892,10 +822,7 @@
                 "description": "Whether the Dispatch Namespace should be remote or not"
               }
             },
-            "required": [
-              "binding",
-              "namespace"
-            ],
+            "required": ["binding", "namespace"],
             "additionalProperties": false
           },
           "description": "Specifies namespace bindings that are bound to this Worker environment.\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.\n\nFor reference, see https://developers.cloudflare.com/workers/wrangler/configuration/#dispatch-namespace-bindings-workers-for-platforms",
@@ -915,10 +842,7 @@
                 "description": "Name of the Pipeline to bind"
               }
             },
-            "required": [
-              "binding",
-              "pipeline"
-            ],
+            "required": ["binding", "pipeline"],
             "additionalProperties": false
           },
           "description": "Specifies list of Pipelines bound to this Worker environment\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.",
@@ -942,11 +866,7 @@
                 "description": "Name of the secret"
               }
             },
-            "required": [
-              "binding",
-              "store_id",
-              "secret_name"
-            ],
+            "required": ["binding", "store_id", "secret_name"],
             "additionalProperties": false
           },
           "description": "Specifies Secret Store bindings that are bound to this Worker environment.\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.",
@@ -966,9 +886,7 @@
                 "description": "Whether the timer is enabled"
               }
             },
-            "required": [
-              "binding"
-            ],
+            "required": ["binding"],
             "additionalProperties": false
           },
           "description": "**DO NOT USE**. Hello World Binding Config to serve as an explanatory example.\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.",
@@ -996,26 +914,16 @@
                   },
                   "period": {
                     "type": "number",
-                    "enum": [
-                      10,
-                      60
-                    ],
+                    "enum": [10, 60],
                     "description": "The time period in seconds (10 for ten seconds, 60 for one minute)."
                   }
                 },
-                "required": [
-                  "limit",
-                  "period"
-                ],
+                "required": ["limit", "period"],
                 "additionalProperties": false,
                 "description": "Simple rate limiting configuration."
               }
             },
-            "required": [
-              "name",
-              "namespace_id",
-              "simple"
-            ],
+            "required": ["name", "namespace_id", "simple"],
             "additionalProperties": false
           },
           "description": "Specifies rate limit bindings that are bound to this Worker environment.\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.",
@@ -1066,9 +974,7 @@
               "default": []
             }
           },
-          "required": [
-            "bucket"
-          ],
+          "required": ["bucket"],
           "additionalProperties": false,
           "description": "The definition of a Worker Site, a feature that lets you upload static assets with your Worker.\n\nMore details at https://developers.cloudflare.com/workers/platform/sites\n\nFor reference, see https://developers.cloudflare.com/workers/wrangler/configuration/#workers-sites"
         },
@@ -1280,17 +1186,12 @@
                     "description": "The destination for this logged message"
                   }
                 },
-                "required": [
-                  "name",
-                  "destination"
-                ],
+                "required": ["name", "destination"],
                 "additionalProperties": false
               }
             }
           },
-          "required": [
-            "bindings"
-          ],
+          "required": ["bindings"],
           "additionalProperties": false,
           "description": "List of bindings that you will send to logfwdr",
           "default": {
@@ -1310,18 +1211,13 @@
           "properties": {
             "mode": {
               "type": "string",
-              "enum": [
-                "off",
-                "smart"
-              ]
+              "enum": ["off", "smart"]
             },
             "hint": {
               "type": "string"
             }
           },
-          "required": [
-            "mode"
-          ],
+          "required": ["mode"],
           "additionalProperties": false,
           "description": "Specify how the Worker should be located to minimize round-trip time.\n\nMore details: https://developers.cloudflare.com/workers/platform/smart-placement/"
         },
@@ -1335,10 +1231,7 @@
         },
         "compliance_region": {
           "type": "string",
-          "enum": [
-            "public",
-            "fedramp_high"
-          ],
+          "enum": ["public", "fedramp_high"],
           "description": "Specify the compliance region mode of the Worker.\n\nAlthough if the user does not specify a compliance region, the default is `public`, it can be set to `undefined` in configuration to delegate to the CLOUDFLARE_COMPLIANCE_REGION environment variable."
         },
         "define": {
@@ -1371,9 +1264,7 @@
               "$ref": "#/definitions/DurableObjectBindings"
             }
           },
-          "required": [
-            "bindings"
-          ],
+          "required": ["bindings"],
           "additionalProperties": false,
           "description": "A list of durable objects that your Worker should be bound to.\n\nFor more information about Durable Objects, see the documentation at https://developers.cloudflare.com/workers/learning/using-durable-objects\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.\n\nFor reference, see https://developers.cloudflare.com/workers/wrangler/configuration/#durable-objects",
           "default": {
@@ -1423,9 +1314,7 @@
                 "description": "Whether the KV namespace should be remote or not"
               }
             },
-            "required": [
-              "binding"
-            ],
+            "required": ["binding"],
             "additionalProperties": false
           },
           "description": "These specify any Workers KV Namespaces you want to access from inside your Worker.\n\nTo learn more about KV Namespaces, see the documentation at https://developers.cloudflare.com/workers/learning/how-kv-works\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.\n\nFor reference, see https://developers.cloudflare.com/workers/wrangler/configuration/#kv-namespaces",
@@ -1456,9 +1345,7 @@
                 "description": "Whether the binding should be remote or not"
               }
             },
-            "required": [
-              "name"
-            ],
+            "required": ["name"],
             "additionalProperties": false
           },
           "description": "These specify bindings to send email from inside your Worker.\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.\n\nFor reference, see https://developers.cloudflare.com/workers/wrangler/configuration/#email-bindings",
@@ -1489,10 +1376,7 @@
                     "description": "Whether the Queue producer should be remote or not"
                   }
                 },
-                "required": [
-                  "binding",
-                  "queue"
-                ],
+                "required": ["binding", "queue"],
                 "additionalProperties": false
               },
               "description": "Producer bindings"
@@ -1527,10 +1411,7 @@
                     "description": "The queue to send messages that failed to be consumed."
                   },
                   "max_concurrency": {
-                    "type": [
-                      "number",
-                      "null"
-                    ],
+                    "type": ["number", "null"],
                     "description": "The maximum number of concurrent consumer Worker invocations. Leaving this unset will allow your consumer to scale to the maximum concurrency needed to keep up with the message backlog."
                   },
                   "visibility_timeout_ms": {
@@ -1542,9 +1423,7 @@
                     "description": "The number of seconds to wait before retrying a message"
                   }
                 },
-                "required": [
-                  "queue"
-                ],
+                "required": ["queue"],
                 "additionalProperties": false
               },
               "description": "Consumer configuration"
@@ -1583,9 +1462,7 @@
                 "description": "Whether the R2 bucket should be remote or not"
               }
             },
-            "required": [
-              "binding"
-            ],
+            "required": ["binding"],
             "additionalProperties": false
           },
           "description": "Specifies R2 buckets that are bound to this Worker environment.\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.\n\nFor reference, see https://developers.cloudflare.com/workers/wrangler/configuration/#r2-buckets",
@@ -1629,9 +1506,7 @@
                 "description": "Whether the D1 database should be remote or not"
               }
             },
-            "required": [
-              "binding"
-            ],
+            "required": ["binding"],
             "additionalProperties": false
           },
           "description": "Specifies D1 databases that are bound to this Worker environment.\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.\n\nFor reference, see https://developers.cloudflare.com/workers/wrangler/configuration/#d1-databases",
@@ -1655,10 +1530,7 @@
                 "description": "Whether the Vectorize index should be remote or not"
               }
             },
-            "required": [
-              "binding",
-              "index_name"
-            ],
+            "required": ["binding", "index_name"],
             "additionalProperties": false
           },
           "description": "Specifies Vectorize indexes that are bound to this Worker environment.\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.\n\nFor reference, see https://developers.cloudflare.com/workers/wrangler/configuration/#vectorize-indexes",
@@ -1682,10 +1554,7 @@
                 "description": "The local database connection string for `wrangler dev`"
               }
             },
-            "required": [
-              "binding",
-              "id"
-            ],
+            "required": ["binding", "id"],
             "additionalProperties": false
           },
           "description": "Specifies Hyperdrive configs that are bound to this Worker environment.\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.\n\nFor reference, see https://developers.cloudflare.com/workers/wrangler/configuration/#hyperdrive",
@@ -1718,10 +1587,7 @@
                 "description": "Whether the service binding should be remote or not"
               }
             },
-            "required": [
-              "binding",
-              "service"
-            ],
+            "required": ["binding", "service"],
             "additionalProperties": false
           },
           "description": "Specifies service bindings (Worker-to-Worker) that are bound to this Worker environment.\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.\n\nFor reference, see https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings",
@@ -1741,9 +1607,7 @@
                 "description": "The name of this dataset to write to."
               }
             },
-            "required": [
-              "binding"
-            ],
+            "required": ["binding"],
             "additionalProperties": false
           },
           "description": "Specifies analytics engine datasets that are bound to this Worker environment.\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.\n\nFor reference, see https://developers.cloudflare.com/workers/wrangler/configuration/#analytics-engine-datasets",
@@ -1760,9 +1624,7 @@
               "description": "Whether the Browser binding should be remote or not"
             }
           },
-          "required": [
-            "binding"
-          ],
+          "required": ["binding"],
           "additionalProperties": false,
           "description": "A browser that will be usable from the Worker.\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.\n\nFor reference, see https://developers.cloudflare.com/workers/wrangler/configuration/#browser-rendering",
           "default": {}
@@ -1781,9 +1643,7 @@
               "description": "Whether the AI binding should be remote or not"
             }
           },
-          "required": [
-            "binding"
-          ],
+          "required": ["binding"],
           "additionalProperties": false,
           "description": "Binding to the AI project.\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.\n\nFor reference, see https://developers.cloudflare.com/workers/wrangler/configuration/#workers-ai",
           "default": {}
@@ -1799,9 +1659,7 @@
               "description": "Whether the Images binding should be remote or not"
             }
           },
-          "required": [
-            "binding"
-          ],
+          "required": ["binding"],
           "additionalProperties": false,
           "description": "Binding to Cloudflare Images\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.\n\nFor reference, see https://developers.cloudflare.com/workers/wrangler/configuration/#images",
           "default": {}
@@ -1813,9 +1671,7 @@
               "type": "string"
             }
           },
-          "required": [
-            "binding"
-          ],
+          "required": ["binding"],
           "additionalProperties": false,
           "description": "Binding to the Worker Version's metadata"
         },
@@ -1844,22 +1700,15 @@
                           "package": {
                             "type": "string",
                             "description": "Package is the bare specifier of the package that exposes plugins to integrate into Miniflare via a named `plugins` export.",
-                            "examples": [
-                              "@cloudflare/my-external-miniflare-plugin"
-                            ]
+                            "examples": ["@cloudflare/my-external-miniflare-plugin"]
                           },
                           "name": {
                             "type": "string",
                             "description": "Plugin is the name of the plugin exposed by the package.",
-                            "examples": [
-                              "MY_UNSAFE_PLUGIN"
-                            ]
+                            "examples": ["MY_UNSAFE_PLUGIN"]
                           }
                         },
-                        "required": [
-                          "package",
-                          "name"
-                        ],
+                        "required": ["package", "name"],
                         "additionalProperties": false
                       },
                       "options": {
@@ -1868,16 +1717,11 @@
                         "description": "Optional mapping of unsafe bindings names to options provided for the plugin."
                       }
                     },
-                    "required": [
-                      "plugin"
-                    ],
+                    "required": ["plugin"],
                     "additionalProperties": false
                   }
                 },
-                "required": [
-                  "name",
-                  "type"
-                ],
+                "required": ["name", "type"],
                 "additionalProperties": {}
               },
               "description": "A set of bindings that should be put into a Worker's upload metadata without changes. These can be used to implement bindings for features that haven't released and aren't supported directly by wrangler or miniflare."
@@ -1902,10 +1746,7 @@
                       }
                     }
                   },
-                  "required": [
-                    "base_path",
-                    "source_schemas"
-                  ],
+                  "required": ["base_path", "source_schemas"],
                   "additionalProperties": false
                 },
                 {
@@ -1915,9 +1756,7 @@
                       "type": "string"
                     }
                   },
-                  "required": [
-                    "compiled_schema"
-                  ],
+                  "required": ["compiled_schema"],
                   "additionalProperties": false
                 }
               ],
@@ -1946,10 +1785,7 @@
                 "description": "Whether the mtls fetcher should be remote or not"
               }
             },
-            "required": [
-              "binding",
-              "certificate_id"
-            ],
+            "required": ["binding", "certificate_id"],
             "additionalProperties": false
           },
           "description": "Specifies a list of mTLS certificates that are bound to this Worker environment.\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.\n\nFor reference, see https://developers.cloudflare.com/workers/wrangler/configuration/#mtls-certificates",
@@ -1985,10 +1821,7 @@
                 "description": "Whether the Dispatch Namespace should be remote or not"
               }
             },
-            "required": [
-              "binding",
-              "namespace"
-            ],
+            "required": ["binding", "namespace"],
             "additionalProperties": false
           },
           "description": "Specifies namespace bindings that are bound to this Worker environment.\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.\n\nFor reference, see https://developers.cloudflare.com/workers/wrangler/configuration/#dispatch-namespace-bindings-workers-for-platforms",
@@ -2008,10 +1841,7 @@
                 "description": "Name of the Pipeline to bind"
               }
             },
-            "required": [
-              "binding",
-              "pipeline"
-            ],
+            "required": ["binding", "pipeline"],
             "additionalProperties": false
           },
           "description": "Specifies list of Pipelines bound to this Worker environment\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.",
@@ -2035,11 +1865,7 @@
                 "description": "Name of the secret"
               }
             },
-            "required": [
-              "binding",
-              "store_id",
-              "secret_name"
-            ],
+            "required": ["binding", "store_id", "secret_name"],
             "additionalProperties": false
           },
           "description": "Specifies Secret Store bindings that are bound to this Worker environment.\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.",
@@ -2059,9 +1885,7 @@
                 "description": "Whether the timer is enabled"
               }
             },
-            "required": [
-              "binding"
-            ],
+            "required": ["binding"],
             "additionalProperties": false
           },
           "description": "**DO NOT USE**. Hello World Binding Config to serve as an explanatory example.\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.",
@@ -2089,26 +1913,16 @@
                   },
                   "period": {
                     "type": "number",
-                    "enum": [
-                      10,
-                      60
-                    ],
+                    "enum": [10, 60],
                     "description": "The time period in seconds (10 for ten seconds, 60 for one minute)."
                   }
                 },
-                "required": [
-                  "limit",
-                  "period"
-                ],
+                "required": ["limit", "period"],
                 "additionalProperties": false,
                 "description": "Simple rate limiting configuration."
               }
             },
-            "required": [
-              "name",
-              "namespace_id",
-              "simple"
-            ],
+            "required": ["name", "namespace_id", "simple"],
             "additionalProperties": false
           },
           "description": "Specifies rate limit bindings that are bound to this Worker environment.\n\nNOTE: This field is not automatically inherited from the top level environment, and so must be specified in every named environment.",
@@ -2147,10 +1961,7 @@
           "type": "boolean"
         }
       },
-      "required": [
-        "pattern",
-        "zone_id"
-      ],
+      "required": ["pattern", "zone_id"],
       "additionalProperties": false
     },
     "ZoneNameRoute": {
@@ -2166,10 +1977,7 @@
           "type": "boolean"
         }
       },
-      "required": [
-        "pattern",
-        "zone_name"
-      ],
+      "required": ["pattern", "zone_name"],
       "additionalProperties": false
     },
     "CustomDomainRoute": {
@@ -2182,10 +1990,7 @@
           "type": "boolean"
         }
       },
-      "required": [
-        "pattern",
-        "custom_domain"
-      ],
+      "required": ["pattern", "custom_domain"],
       "additionalProperties": false
     },
     "DurableObjectMigration": {
@@ -2221,10 +2026,7 @@
                 "type": "string"
               }
             },
-            "required": [
-              "from",
-              "to"
-            ],
+            "required": ["from", "to"],
             "additionalProperties": false
           },
           "description": "The Durable Objects being renamed."
@@ -2237,9 +2039,7 @@
           "description": "The Durable Objects being removed."
         }
       },
-      "required": [
-        "tag"
-      ],
+      "required": ["tag"],
       "additionalProperties": false,
       "description": "Configuration in wrangler for Durable Object Migrations"
     },
@@ -2251,9 +2051,7 @@
           "description": "Maximum allowed CPU time for a Worker's invocation in milliseconds"
         }
       },
-      "required": [
-        "cpu_ms"
-      ],
+      "required": ["cpu_ms"],
       "additionalProperties": false
     },
     "Rule": {
@@ -2272,10 +2070,7 @@
           "type": "boolean"
         }
       },
-      "required": [
-        "type",
-        "globs"
-      ],
+      "required": ["type", "globs"],
       "additionalProperties": false,
       "description": "A bundling resolver rule, defining the modules type for paths that match the specified globs."
     },
@@ -2305,21 +2100,12 @@
         },
         "html_handling": {
           "type": "string",
-          "enum": [
-            "auto-trailing-slash",
-            "force-trailing-slash",
-            "drop-trailing-slash",
-            "none"
-          ],
+          "enum": ["auto-trailing-slash", "force-trailing-slash", "drop-trailing-slash", "none"],
           "description": "How to handle HTML requests."
         },
         "not_found_handling": {
           "type": "string",
-          "enum": [
-            "single-page-application",
-            "404-page",
-            "none"
-          ],
+          "enum": ["single-page-application", "404-page", "none"],
           "description": "How to handle requests that do not match an asset."
         },
         "run_worker_first": {
@@ -2432,12 +2218,7 @@
       "$ref": "#/definitions/TypeOf%3CZodUnion%3C%5Bdef-class-1315922706-6501-8772-1315922706-0-54395%2Cdef-class-1315922706-9299-10989-1315922706-0-54395%2Cdef-class-1315922706-12937-13365-1315922706-0-54395%2Cdef-class-1315922706-15083-15273-1315922706-0-54395%5D%3E%3E"
     },
     "TypeOf<ZodUnion<[def-class-1315922706-6501-8772-1315922706-0-54395,def-class-1315922706-9299-10989-1315922706-0-54395,def-class-1315922706-12937-13365-1315922706-0-54395,def-class-1315922706-15083-15273-1315922706-0-54395]>>": {
-      "type": [
-        "string",
-        "number",
-        "boolean",
-        "null"
-      ]
+      "type": ["string", "number", "boolean", "null"]
     },
     "DurableObjectBindings": {
       "type": "array",
@@ -2461,10 +2242,7 @@
             "description": "The service environment of the script_name to bind to"
           }
         },
-        "required": [
-          "name",
-          "class_name"
-        ],
+        "required": ["name", "class_name"],
         "additionalProperties": false
       }
     },
@@ -2492,11 +2270,7 @@
           "description": "Whether the Workflow should be remote or not"
         }
       },
-      "required": [
-        "binding",
-        "name",
-        "class_name"
-      ],
+      "required": ["binding", "name", "class_name"],
       "additionalProperties": false
     },
     "CloudchamberConfig": {
@@ -2510,11 +2284,7 @@
         },
         "instance_type": {
           "type": "string",
-          "enum": [
-            "dev",
-            "basic",
-            "standard"
-          ]
+          "enum": ["dev", "basic", "standard"]
         },
         "vcpu": {
           "type": "number"
@@ -2561,11 +2331,7 @@
         },
         "scheduling_policy": {
           "type": "string",
-          "enum": [
-            "default",
-            "moon",
-            "regional"
-          ],
+          "enum": ["default", "moon", "regional"],
           "description": "The scheduling policy of the application",
           "default": "default"
         },
@@ -2615,10 +2381,7 @@
             }
           ],
           "description": "Configures what percentage of instances should be updated at each step of a rollout. You can specify this as a single number, or an array of numbers.\n\nIf this is a single number, each step will progress by that percentage. The options are 5, 10, 20, 25, 50 or 100.\n\nIf this is an array, each step specifies the cumulative rollout progress. The final step must be 100.\n\nThis can be overridden adhoc by deploying with the `--containers-rollout=immediate` flag, which will roll out to 100% of instances in one step.",
-          "default": [
-            10,
-            100
-          ]
+          "default": [10, 100]
         },
         "rollout_active_grace_period": {
           "type": "number",
@@ -2626,10 +2389,7 @@
           "default": 0
         }
       },
-      "required": [
-        "image",
-        "class_name"
-      ],
+      "required": ["image", "class_name"],
       "additionalProperties": false,
       "description": "Configuration for a container application"
     },
@@ -2645,9 +2405,7 @@
           "description": "(Optional) The environment of the service."
         }
       },
-      "required": [
-        "service"
-      ],
+      "required": ["service"],
       "additionalProperties": false
     },
     "DispatchNamespaceOutbound": {
@@ -2669,9 +2427,7 @@
           "description": "(Optional) List of parameter names, for sending context from your dispatch Worker to the outbound handler"
         }
       },
-      "required": [
-        "service"
-      ],
+      "required": ["service"],
       "additionalProperties": false
     },
     "RawDevConfig": {
@@ -2694,19 +2450,13 @@
         },
         "local_protocol": {
           "type": "string",
-          "enum": [
-            "http",
-            "https"
-          ],
+          "enum": ["http", "https"],
           "description": "Protocol that local wrangler dev server listens to requests on.",
           "default": "http"
         },
         "upstream_protocol": {
           "type": "string",
-          "enum": [
-            "https",
-            "http"
-          ],
+          "enum": ["https", "http"],
           "description": "Protocol that wrangler dev forwards requests on\n\nSetting this to `http` is not currently implemented for remote mode. See https://github.com/cloudflare/workers-sdk/issues/583",
           "default": "https"
         },
@@ -2735,9 +2485,7 @@
               "$ref": "#/definitions/DockerConfiguration"
             }
           },
-          "required": [
-            "localDocker"
-          ],
+          "required": ["localDocker"],
           "additionalProperties": false
         },
         {
@@ -2753,9 +2501,7 @@
           "description": "Socket used by miniflare to communicate with Docker"
         }
       },
-      "required": [
-        "socketPath"
-      ],
+      "required": ["socketPath"],
       "additionalProperties": false
     }
   },

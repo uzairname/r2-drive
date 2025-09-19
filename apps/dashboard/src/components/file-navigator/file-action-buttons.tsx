@@ -1,23 +1,22 @@
-import React from "react";
-import { Button } from "@workspace/ui/components/button";
-import { Upload, FolderPlus, Plus } from "lucide-react";
+import { Button } from '@workspace/ui/components/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@workspace/ui/components/dropdown-menu";
+} from '@workspace/ui/components/dropdown-menu'
+import { FolderPlus, Plus, Upload } from 'lucide-react'
 
 export interface FileActionButtonsProps {
-  onUploadFile: () => void;
-  onUploadFolder: () => void;
-  onCreateFolder: () => void;
+  onUploadFile: () => void
+  onUploadFolder: () => void
+  onCreateFolder: () => void
 }
 
-export function FileActionButtons({ 
-  onUploadFile, 
-  onUploadFolder, 
-  onCreateFolder 
+export function FileActionButtons({
+  onUploadFile,
+  onUploadFolder,
+  onCreateFolder,
 }: FileActionButtonsProps) {
   return (
     <div className="flex justify-left mt-4">
@@ -62,5 +61,5 @@ export function FileActionButtons({
         </DropdownMenu>
       </div>
     </div>
-  );
+  )
 }
