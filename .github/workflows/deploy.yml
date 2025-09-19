@@ -51,6 +51,8 @@ jobs:
           echo "${{ secrets.GOOGLE_CLIENT_ID }}" | npx wrangler secret put GOOGLE_CLIENT_ID
           echo "${{ secrets.GOOGLE_CLIENT_SECRET }}" | npx wrangler secret put GOOGLE_CLIENT_SECRET
           echo "${{ secrets.ADMIN_EMAILS }}" | npx wrangler secret put ADMIN_EMAILS
+          echo "${{ secrets.R2_ACCESS_KEY_ID }}" | npx wrangler secret put R2_ACCESS_KEY_ID
+          echo "${{ secrets.R2_SECRET_ACCESS_KEY }}" | npx wrangler secret put R2_SECRET_ACCESS_KEY
           cd ../..
 
       - name: Create R2 buckets
