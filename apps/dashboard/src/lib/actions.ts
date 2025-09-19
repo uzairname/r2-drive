@@ -9,19 +9,19 @@ import { Result, err, ok } from './result'
 
 // Functions that can be used from client components
 
-/**
- * Upload an object to R2 using the server
- */
-async function _uploadSmallObject(
-  folder: Path,
-  file: File,
-  onProgress?: (progress: { uploaded: number; total: number }) => void
-): Promise<UploadResult> {
-  const client = new R2Client()
-  return await client.uploadSmallObject(folder, file, onProgress)
-}
+// /**
+//  * Upload an object to R2 using the server
+//  */
+// async function _uploadSmallObject(
+//   folder: Path,
+//   file: File,
+//   onProgress?: (progress: { uploaded: number; total: number }) => void
+// ): Promise<UploadResult> {
+//   const client = new R2Client()
+//   return await client.uploadSmallObject(folder, file, onProgress)
+// }
 
-export const uploadSmallObject = withAdminProtection(_uploadSmallObject)
+// export const uploadSmallObject = withAdminProtection(_uploadSmallObject)
 
 /**
  * List files and folders in a folder

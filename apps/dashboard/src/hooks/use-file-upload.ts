@@ -1,5 +1,5 @@
 import { Path } from '@/lib/path'
-import type { ItemUploadProgress } from '@workspace/ui/components/upload-progress'
+import { type ItemUploadProgress } from '@/types/upload'
 import { useCallback, useRef, useState } from 'react'
 
 export interface UploadState {
@@ -51,17 +51,9 @@ export function useFileUpload({
       const files = e.target.files
       if (!files || files.length === 0) return
       const fileArray = Array.from(files)
-      setUploadProgress(
-        fileArray.map((file) => ({
-          fileName: file.name,
-          progress: 0,
-          completed: false,
-        }))
-      )
-
+      e.target.value = '' // Reset input for future uploads
+      setUploadProgress([]) // Reset progress for new upload session
       await onUpload(fileArray, currentPath, handleProgressUpdate)
-      // Reset the input value to allow uploading the same files again
-      e.target.value = ''
     },
     [onUpload, currentPath]
   )

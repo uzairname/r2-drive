@@ -4,6 +4,15 @@ export interface UploadData {
   fileName: string
 }
 
+export interface ItemUploadProgress {
+  fileName: string
+  uploadedBytes?: number
+  totalBytes?: number
+  success?: boolean
+  errorMsg?: string
+  isMultipart?: boolean
+}
+
 export type UploadResult = Result<UploadData, UploadData & { error: Error }>
 
 export interface UploadOptions {}

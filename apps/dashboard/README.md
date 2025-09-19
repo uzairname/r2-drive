@@ -18,7 +18,7 @@ A file explorer for Cloudflare R2 storage, built with Next.js and OpenNext.js.
    pnpm install
    ```
 3. Create your `.env` file in `apps/dashboard`
-4. Fill in your environment variables in `.env`. You need a Cloudflare API Token with permissions:
+4. Fill in your environment variables in `.dev.vars`. You need a Cloudflare API Token with permissions:
 
 - Account > Workers Scripts > Edit
 - Account > Workers R2 Storage > Edit
@@ -42,6 +42,8 @@ pnpm run deploy
 ```
 
 ## R2 Configuration
+
+Create an R2 bucket on the cloudflare dashboard. Update its CORS policy to allow POSTs and your production domain
 
 Configure your wrangler.jsonc with your R2 bucket bindings:
 

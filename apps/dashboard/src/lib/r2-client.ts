@@ -1,5 +1,4 @@
-import { R2_CONFIG, UPLOAD_CONFIG } from '@/config/app-config'
-import { UploadResult } from '@/types/upload'
+import { R2_CONFIG } from '@/config/app-config'
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { revalidatePath } from 'next/cache'
 import { Path, Paths } from './path'
@@ -38,6 +37,12 @@ export type DeleteObjectsErrors = {
   objectKey: string
   error: Error
 }[]
+
+
+export function getR2Url(key: string, env: CloudflareEnv): string {
+  const baseUrl = `https://${env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+  return `${baseUrl}/${env.R2_BUCKET_NAME}/${key}`;
+}
 
 export class R2Client {
   private r2: R2Bucket
@@ -190,56 +195,56 @@ export class R2Client {
     })
   }
 
-  /**
-   * Uploads an object whose size is below the multipart threshold, from the server
-   */
-  async uploadSmallObject(
-    folder: Path,
-    file: File,
-    onProgress?: (progress: { uploaded: number; total: number }) => void
-  ): Promise<UploadResult> {
-    // Ensure size is below multipart threshold
-    if (file.size > UPLOAD_CONFIG.MULTIPART_THRESHOLD_BYTES) {
-      return err({
-        fileName: file.name,
-        error: new Error(
-          `File ${file.name} is too large for single upload, exceeds ${UPLOAD_CONFIG.MULTIPART_THRESHOLD_BYTES / (1024 * 1024)} MB`
-        ),
-      })
-    }
+  // /**
+  //  * Uploads an object whose size is below the multipart threshold, from the server
+  //  */
+  // async uploadSmallObject(
+  //   folder: Path,
+  //   file: File,
+  //   onProgress?: (progress: { uploaded: number; total: number }) => void
+  // ): Promise<UploadResult> {
+  //   // Ensure size is below multipart threshold
+  //   if (file.size > UPLOAD_CONFIG.MULTIPART_CHUNK_SIZE) {
+  //     return err({
+  //       fileName: file.name,
+  //       error: new Error(
+  //         `File ${file.name} is too large for single upload, exceeds ${UPLOAD_CONFIG.MULTIPART_CHUNK_SIZE / (1024 * 1024)} MB`
+  //       ),
+  //     })
+  //   }
 
-    try {
-      const key = Paths.filePath(folder, file).key
+  //   try {
+  //     const key = Paths.filePath(folder, file).key
 
-      // Prepare metadata with original lastModified time
-      const customMetadata = {
-        originalLastModified: file.lastModified.toString(),
-        originalName: file.name,
-      }
+  //     // Prepare metadata with original lastModified time
+  //     const customMetadata = {
+  //       originalLastModified: file.lastModified.toString(),
+  //       originalName: file.name,
+  //     }
 
-      const data = await file.arrayBuffer()
+  //     const data = await file.arrayBuffer()
 
-      // Prepare R2 put options with custom metadata
-      const putOptions: R2PutOptions = {
-        customMetadata,
-      }
+  //     // Prepare R2 put options with custom metadata
+  //     const putOptions: R2PutOptions = {
+  //       customMetadata,
+  //     }
 
-      const totalSize = data.byteLength
+  //     const totalSize = data.byteLength
 
-      onProgress?.({ uploaded: 0, total: totalSize })
-      await this.r2.put(key, data, putOptions)
-      onProgress?.({ uploaded: totalSize, total: totalSize })
+  //     onProgress?.({ uploaded: 0, total: totalSize })
+  //     await this.r2.put(key, data, putOptions)
+  //     onProgress?.({ uploaded: totalSize, total: totalSize })
 
-      return ok({
-        fileName: file.name,
-      })
-    } catch (error) {
-      return err({
-        fileName: file.name,
-        error: makeError(error),
-      })
-    }
-  }
+  //     return ok({
+  //       fileName: file.name,
+  //     })
+  //   } catch (error) {
+  //     return err({
+  //       fileName: file.name,
+  //       error: makeError(error),
+  //     })
+  //   }
+  // }
 
   /**
    * Delete an object from the bucket
@@ -372,5 +377,16 @@ export class R2Client {
   async abortMultipartUpload(uploadId: string, key: string): Promise<void> {
     const multipartUpload = this.r2.resumeMultipartUpload(key, uploadId)
     await multipartUpload.abort()
+  }
+
+  /**
+   * Upload a single file directly to R2
+   */
+  async uploadSingleFile(
+    key: string, 
+    data: ReadableStream | ArrayBuffer | ArrayBufferView | string | Blob,
+    options?: R2PutOptions
+  ): Promise<R2Object> {
+    return await this.r2.put(key, data, options)
   }
 }

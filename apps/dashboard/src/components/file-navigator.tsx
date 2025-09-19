@@ -8,7 +8,7 @@ import { useFileExplorer } from '@/hooks/use-file-explorer'
 import { useFileOperations } from '@/hooks/use-file-operations'
 import { useFileUpload } from '@/hooks/use-file-upload'
 import { Path, Paths } from '@/lib/path'
-import { ItemUploadProgress, UploadProgress } from '@workspace/ui/components/upload-progress'
+import { UploadProgress } from '@/components/file-navigator/upload-progress'
 import { R2Breadcrumbs } from './file-navigator/breadcrumbs'
 import { CopyLinkButton } from './file-navigator/copy-link-button'
 import { CreateFolderDialog } from './file-navigator/create-folder-dialog'
@@ -16,6 +16,7 @@ import { DeleteConfirmationDialog } from './file-navigator/delete-confirmation-d
 import { FileActionButtons } from './file-navigator/file-action-buttons'
 import { R2FileTable } from './file-navigator/file-table'
 import { R2SelectionInfo } from './file-navigator/selection-info'
+import { ItemUploadProgress } from '@/types/upload'
 
 export function R2BucketNavigator() {
   const fileExplorer = useFileExplorer()

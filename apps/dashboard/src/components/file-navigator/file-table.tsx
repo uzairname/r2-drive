@@ -31,7 +31,7 @@ import {
   Video,
 } from 'lucide-react'
 import React from 'react'
-import { formatFileSize, getMimeType } from '../../lib/file-utils'
+import { formatBytes, getMimeType } from '../../lib/file-utils'
 
 function itemToIcon(item: R2Item) {
   return item.path.isFolder ? (
@@ -189,7 +189,7 @@ export function R2FileTable({
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {typeof item.size === 'number' && !item.path.isFolder
-                    ? formatFileSize(item.size)
+                    ? formatBytes(item.size)
                     : '—'}
                 </TableCell>
                 <TableCell className="text-muted-foreground">

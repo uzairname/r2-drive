@@ -1,7 +1,7 @@
 import { deleteObjects } from '@/lib/actions'
 import { Path } from '@/lib/path'
-import { uploadFiles } from '@/lib/upload-utils'
-import { ItemUploadProgress } from '@workspace/ui/components/upload-progress'
+import { uploadFiles } from '@/lib/upload'
+import { ItemUploadProgress } from '@/types/upload'
 import { toast } from 'sonner'
 
 export function useFileOperations() {
@@ -10,9 +10,13 @@ export function useFileOperations() {
     currentPath: Path,
     onProgress?: (progress: ItemUploadProgress) => void
   ): Promise<void> => {
-    // Create upload manager with progress callback
-    // Start the upload
-    await uploadFiles(currentPath, files, onProgress)
+    const result = await uploadFiles(currentPath, files, onProgress)
+    if (!result.success) {
+      toast.error('Failed to upload files', {
+        description: result.error,
+      })
+      return
+    }
   }
 
   const handleDelete = async (keysToDelete: string[], onSuccess?: () => void): Promise<void> => {
