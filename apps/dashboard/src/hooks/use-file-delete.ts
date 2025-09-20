@@ -1,11 +1,11 @@
-import { Path } from '@/lib/path'
-import { R2Item } from '@/lib/r2-client'
+import { Path, Paths } from '@/lib/path'
+import { R2Item } from '@/lib/r2'
 import { useCallback, useState } from 'react'
 
 export interface DeleteState {
   isDeleting: boolean
   showDeleteDialog: boolean
-  itemsToDelete: { ids: string[]; names: string[] }
+  itemsToDelete: Path[]
 }
 
 export interface DeleteActions {
@@ -16,48 +16,37 @@ export interface DeleteActions {
 }
 
 export interface UseFileDeleteProps {
-  onDelete: (itemIds: string[]) => Promise<void>
+  onDelete: (items: Path[]) => Promise<void>
 }
 
 export function useFileDelete({ onDelete }: UseFileDeleteProps): DeleteState & DeleteActions {
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [itemsToDelete, setItemsToDelete] = useState<{
-    ids: string[]
-    names: string[]
-  }>({
-    ids: [],
-    names: [],
-  })
+  const [itemsToDelete, setItemsToDelete] = useState<Path[]>([])
 
-  const onDeleteSelected = (selectedItems: string[], items: R2Item[]) => {
+  const onDeleteSelected = (selectedItems: string[]) => {
     if (selectedItems.length === 0) return
-
-    const selectedItemNames = items
-      .filter((item) => selectedItems.includes(item.path.key))
-      .map((item) => item.path.name)
-
-    setItemsToDelete({ ids: selectedItems, names: selectedItemNames })
+    setItemsToDelete(selectedItems.map(Paths.fromR2Key))
     setShowDeleteDialog(true)
   }
 
   const onDeleteItem = (path: Path) => {
-    setItemsToDelete({ ids: [path.key], names: [path.name] })
+    setItemsToDelete([path])
     setShowDeleteDialog(true)
   }
 
   const handleConfirmDelete = useCallback(async () => {
     setIsDeleting(true)
     try {
-      await onDelete(itemsToDelete.ids)
+      await onDelete(itemsToDelete)
     } catch (error) {
       console.error('Error deleting items:', error)
     } finally {
       setIsDeleting(false)
-      setItemsToDelete({ ids: [], names: [] })
+      setItemsToDelete([])
       setShowDeleteDialog(false)
     }
-  }, [itemsToDelete.ids, onDelete])
+  }, [itemsToDelete, onDelete])
 
   return {
     // State

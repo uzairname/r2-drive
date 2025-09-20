@@ -38,8 +38,8 @@ export function R2BucketNavigator() {
 
   // Extract delete functionality
   const deleteOps = useFileDelete({
-    onDelete: async (keysToDelete: string[]) => {
-      await fileOperations.handleDelete(keysToDelete, () => {
+    onDelete: async (items: Path[]) => {
+      await fileOperations.handleDelete(items, () => {
         fileExplorer.fetchItems(fileExplorer.path)
       })
     },
@@ -146,7 +146,7 @@ export function R2BucketNavigator() {
         open={deleteOps.showDeleteDialog}
         onOpenChange={deleteOps.setShowDeleteDialog}
         onConfirmDelete={deleteOps.handleConfirmDelete}
-        itemNames={deleteOps.itemsToDelete.names}
+        items={deleteOps.itemsToDelete}
         isDeleting={deleteOps.isDeleting}
       />
     </>

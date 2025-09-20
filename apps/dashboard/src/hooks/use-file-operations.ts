@@ -1,5 +1,5 @@
-import { deleteObjects } from '@/lib/actions'
 import { Path } from '@/lib/path'
+import { deleteObjects } from '@/lib/r2'
 import { uploadFiles } from '@/lib/upload'
 import { ItemUploadProgress } from '@/types/upload'
 import { toast } from 'sonner'
@@ -19,38 +19,14 @@ export function useFileOperations() {
     }
   }
 
-  const handleDelete = async (keysToDelete: string[], onSuccess?: () => void): Promise<void> => {
-    const result = await deleteObjects(keysToDelete)
-
+  const handleDelete = async (pathsToDelete: Path[], onSuccess?: () => void): Promise<void> => {
+    const result = await deleteObjects(pathsToDelete)
     if (!result.success) {
-      if (result.error.errors && result.error.errors.length > 0) {
-        // Show specific errors
-        const errorMessages = result.error.errors
-          .map((e) => `${e.objectKey}: ${e.error.message}`)
-          .join(', ')
-        toast.error(`Failed to delete some items`, {
-          description: errorMessages,
-        })
-      } else {
-        toast.error('Failed to delete selected items', {
-          description: 'Deletion Error',
-          action: {
-            label: 'Retry',
-            onClick: () => handleDelete(keysToDelete, onSuccess),
-          },
-        })
-      }
-      // return err(result.error.error || new Error("Unknown deletion error"));
-      return
+      toast.error(`Failed to delete`, { description: result.error.message})
     } else {
-      const itemCount = keysToDelete.length
-      toast.success(`Successfully deleted ${itemCount} ${itemCount === 1 ? 'item' : 'items'}`, {
-        description: 'Items Deleted',
-      })
-
+      const itemCount = pathsToDelete.length
+      toast.success(`Successfully deleted ${itemCount} ${itemCount === 1 ? 'item' : 'items'}`)
       onSuccess?.()
-      // return ok({ itemCount });
-      return
     }
   }
 

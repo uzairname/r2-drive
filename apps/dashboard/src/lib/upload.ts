@@ -50,7 +50,7 @@ export async function uploadFiles(
     })),
   }
 
-  const response = await fetch('/api/upload/prepare', {
+  const response = await fetch('/api/upload/multipart/prepare', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -154,14 +154,14 @@ export async function uploadFiles(
     // Complete multipart uploads
     const completionPromises = Object.values(completionMap).map(({ key, uploadId, parts, fileSize }) => {
       return limit(async () => {
-        const response = await fetch('/api/upload/complete', {
+        const response = await fetch('/api/upload/multipart/complete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ key, uploadId, parts }),
         });
         onProgress?.({
           fileName: Paths.fromR2Key(key).name,
-          uploadedBytes: fileSize, // Approximate
+          uploadedBytes: fileSize,
           totalBytes: fileSize,
           success: response.ok,
           isMultipart: true,
@@ -174,6 +174,4 @@ export async function uploadFiles(
   }
 
   return ok(undefined)
-
-
 }

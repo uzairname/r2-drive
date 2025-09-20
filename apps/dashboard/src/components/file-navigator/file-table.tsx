@@ -1,6 +1,6 @@
 import { AdminOnly } from '@/hooks/use-admin'
 import { Path } from '@/lib/path'
-import { R2Item } from '@/lib/r2-client'
+import { R2Item } from '@/lib/r2'
 import { Button } from '@workspace/ui/components/button'
 import { Checkbox } from '@workspace/ui/components/checkbox'
 import {

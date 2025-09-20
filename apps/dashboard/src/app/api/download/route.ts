@@ -1,4 +1,5 @@
-import { R2Client } from '@/lib/r2-client'
+import { safeAsync } from '@/lib/result'
+import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
@@ -10,15 +11,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Missing key parameter' }, { status: 400 })
     }
 
-    const client = new R2Client()
-    const result = await client.getObject(key)
+    const { env } = getCloudflareContext()
+    const object = await env.FILES.get(key)
 
-    if (!result.success) {
-      console.error('Error getting object:', result.error)
-      return NextResponse.json({ error: 'Failed to get file' }, { status: 500 })
-    }
-
-    const object = result.data
     if (!object) {
       return NextResponse.json({ error: 'File not found' }, { status: 404 })
     }

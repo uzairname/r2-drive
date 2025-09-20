@@ -2,8 +2,9 @@ import { Path, Paths } from '@/lib/path'
 import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { createFolder, getBucketName, listFiles } from '../lib/actions'
-import { R2Item } from '../lib/r2-client'
+import { getBucketName } from '@/lib/r2'
+import { createFolder, listDisplayableItemsInFolder, R2Item } from '@/lib/r2'
+import { Result } from '@/lib/result'
 
 type SortKey = 'name' | 'size' | 'lastModified'
 type SortDirection = 'asc' | 'desc'
@@ -24,7 +25,7 @@ export interface FileExplorerActions {
   navigateToFolder: (folder: Path) => void
   onItemSelect: (itemId: string) => void
   onSelectAll: () => void
-  onCreateFolder: (folderName: string) => Promise<{ success: boolean; error?: string }>
+  onCreateFolder: (folderName: string) => Promise<Result>
   fetchItems: (currentPath: Path) => Promise<void>
 }
 
@@ -51,22 +52,20 @@ export function useFileExplorer(): FileExplorerState & FileExplorerActions {
     setPath(fullPath)
   }, [searchParams])
 
-  const fetchItems = useCallback(
+  const refreshItems = useCallback(
     async (path: Path) => {
       setIsLoading(true)
-
-      const result = await listFiles(path)
-
+      const result = await listDisplayableItemsInFolder(path)
       if (result.success) {
-        const { objects, folders } = result.data
+        const { files: objects, folders } = result.data
         setItems([...folders, ...objects])
         setSelectedItems([])
       } else {
-        toast.error(`Failed to load files: ${result.error.message}`, {
-          description: 'Loading Error',
+        toast.error(`Failed to load files`, {
+          description: `${result.error.message}`,
           action: {
             label: 'Retry',
-            onClick: () => fetchItems(path),
+            onClick: () => refreshItems(path),
           },
         })
         setItems([])
@@ -77,8 +76,8 @@ export function useFileExplorer(): FileExplorerState & FileExplorerActions {
   )
 
   useEffect(() => {
-    fetchItems(path)
-  }, [path, fetchItems])
+    refreshItems(path)
+  }, [path, refreshItems])
 
   // Sorting logic: folders always first, then sort by key/direction
   const sortedItems = useMemo(() => {
@@ -138,26 +137,19 @@ export function useFileExplorer(): FileExplorerState & FileExplorerActions {
 
   const onCreateFolder = useCallback(
     async (folderName: string) => {
-      try {
-        const result = await createFolder(path, folderName)
+      const result = await createFolder(path, folderName)
 
-        if (result.success) {
-          await fetchItems(path)
-        } else {
-          toast.error(`Failed to create folder: ${result.error}`, {
-            description: 'Folder Creation Error',
-          })
-        }
-
-        return result
-      } catch (error) {
-        toast.error('An unexpected error occurred while creating the folder', {
-          description: 'Unexpected Error',
+      if (result.success) {
+        await refreshItems(path)
+      } else {
+        toast.error(`Failed to create folder`, {
+          description: result.error.message,
         })
-        return { success: false, error: 'Unexpected error' } as const
       }
+
+      return result
     },
-    [path, fetchItems, toast]
+    [path, refreshItems, toast]
   )
 
   return {
@@ -176,6 +168,6 @@ export function useFileExplorer(): FileExplorerState & FileExplorerActions {
     onItemSelect,
     onSelectAll,
     onCreateFolder,
-    fetchItems,
+    fetchItems: refreshItems,
   }
 }

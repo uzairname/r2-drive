@@ -2,7 +2,7 @@
  * Result type for consistent error handling across the application.
  * Provides a standardized way to handle success and failure cases.
  */
-export type Result<T, E = Error> = { success: true; data: T } | { success: false; error: E }
+export type Result<T=void, E = Error> = { success: true; data: T } | { success: false; error: E }
 
 /**
  * Creates a successful result

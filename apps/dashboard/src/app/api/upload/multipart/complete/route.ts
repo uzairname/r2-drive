@@ -1,7 +1,6 @@
 import { withAdminAPIProtection } from '@/lib/api-middleware'
-import { getR2Url, R2Client } from '@/lib/r2-client'
+import { getR2Url } from '@/lib/r2-utils';
 import { NextRequest, NextResponse } from 'next/server'
-import { revalidatePath } from 'next/cache'
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { AwsClient } from 'aws4fetch';
 

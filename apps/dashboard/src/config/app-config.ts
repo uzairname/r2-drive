@@ -7,6 +7,6 @@ export const UPLOAD_CONFIG = {
 
 // R2 configuration constants
 export const R2_CONFIG = {
-  LIST_LIMIT: 50, // Maximum number of objects to return in a single list operation
+  DEFAULT_LIST_LIMIT: 50, // Maximum number of objects to return in a single list operation
   BATCH_DELETE_SIZE: 1000, // R2 limit for bulk delete operations
 } as const
