@@ -1,15 +1,17 @@
 import { Path } from '@/lib/path'
-import { type ItemUploadProgress } from '@/types/upload'
+import { uploadFiles } from '@/lib/upload'
+import { type ItemUploadProgress } from '@/types/item'
 import { useCallback, useRef, useState } from 'react'
+import { toast } from 'sonner'
 
-export interface UploadState {
+export interface UseFileUploadState {
   uploadProgress: ItemUploadProgress[]
   fileInputRef: React.RefObject<HTMLInputElement | null>
   folderInputRef: React.RefObject<HTMLInputElement | null>
 }
 
-export interface UploadActions {
-  upload: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>
+export interface UseFileUploadActions {
+  uploadFromHTMLInput: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>
   uploadFiles: (files: File[]) => Promise<void>
   triggerFileUpload: () => void
   triggerFolderUpload: () => void
@@ -17,18 +19,14 @@ export interface UploadActions {
 }
 
 export interface UseFileUploadProps {
-  currentPath: Path
-  onUpload: (
-    files: File[],
-    currentPath: Path,
-    onProgress?: (progress: ItemUploadProgress) => void
-  ) => Promise<void>
+  path: Path
+  onFilesChange: () => Promise<void>
 }
 
 export function useFileUpload({
-  currentPath,
-  onUpload,
-}: UseFileUploadProps): UploadState & UploadActions {
+  path,
+  onFilesChange,
+}: UseFileUploadProps): UseFileUploadState & UseFileUploadActions {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)
   const [uploadProgress, setUploadProgress] = useState<ItemUploadProgress[]>([])
@@ -46,25 +44,31 @@ export function useFileUpload({
     })
   }
 
-  // Handle direct file upload (for drag and drop)
-  const uploadFiles = useCallback(
+  const onUploadFiles = useCallback(
     async (files: File[]) => {
       setUploadProgress([]) // Reset progress for new upload session
-      await onUpload(files, currentPath, handleProgressUpdate)
+      const result = await uploadFiles(path, files, handleProgressUpdate)
+      if (!result.success) {
+        return void toast.error('Failed to upload files', {
+          description: result.error,
+        })
+      } else {
+        await onFilesChange()
+      }
     },
-    [onUpload, currentPath]
+    [path]
   )
 
   // Handle file or folder upload from input
-  const upload = useCallback(
+  const uploadFromHTMLInput = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files
       if (!files || files.length === 0) return
       const fileArray = Array.from(files)
       e.target.value = '' // Reset input for future uploads
-      await uploadFiles(fileArray)
+      await onUploadFiles(fileArray)
     },
-    [uploadFiles]
+    [onUploadFiles]
   )
 
   const triggerFileUpload = () => {
@@ -81,8 +85,8 @@ export function useFileUpload({
     fileInputRef,
     folderInputRef,
     // Actions
-    upload,
-    uploadFiles,
+    uploadFromHTMLInput,
+    uploadFiles: onUploadFiles,
     triggerFileUpload,
     triggerFolderUpload,
   }

@@ -10,7 +10,7 @@ function getName(parts: string[]): string {
   return name ?? ''
 }
 
-/** 
+/**
  * The key for the object at this path
  */
 function getKey(parts: string[], isFolder: boolean): string {

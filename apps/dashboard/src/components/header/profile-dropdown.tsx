@@ -14,7 +14,7 @@ import {
 import { LogIn, LogOut, Settings, Shield, User } from 'lucide-react'
 import { signIn, signOut, useSession } from 'next-auth/react'
 import { useState } from 'react'
-import { SignInDialog } from '../file-navigator/sign-in-dialog'
+import { SignInDialog } from '../bucket-navigator/sign-in-dialog'
 
 export interface ProfileDropdownProps {
   /** Callback for settings action */

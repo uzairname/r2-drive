@@ -41,8 +41,8 @@ export function DeleteConfirmationDialog({
             Delete {items.length > 1 ? 'Items' : 'Item'}
           </DialogTitle>
           <DialogDescription>
-            Are you sure you want to delete the following {items.length > 1 ? 'items' : 'item'}? This
-            action cannot be undone.
+            Are you sure you want to delete the following {items.length > 1 ? 'items' : 'item'}?
+            This action cannot be undone.
           </DialogDescription>
         </DialogHeader>
 

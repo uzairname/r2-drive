@@ -1,18 +1,11 @@
-"use server"
+'use server'
 
 import { R2_CONFIG } from '@/config/app-config'
+import { R2Item } from '@/types/item'
 import { getCloudflareContext } from '@opennextjs/cloudflare'
-import { Path, Paths } from './path'
-import { Result, err, ok, safe, safeAsync } from './result'
 import { withAdminProtection } from './auth-helpers'
-
-// Represents file/folder structure
-export interface R2Item {
-  path: Path
-  size: number
-  lastModified?: Date
-  originalLastModified?: Date // Original file modification time
-}
+import { Path, Paths } from './path'
+import { Result, safeAsync } from './result'
 
 /**
  * Get the R2 bucket name from Cloudflare environment
@@ -20,7 +13,6 @@ export interface R2Item {
 export async function getBucketName(): Promise<string> {
   return getCloudflareContext().env.R2_BUCKET_NAME
 }
-
 
 /**
  * Low level utility to list objects in an R2 bucket with a specific prefix
@@ -65,40 +57,43 @@ async function _listObjectsWithPrefix(
  */
 export async function listAllKeysInFolder(folder: Path): Promise<string[]> {
   const { objects } = await _listObjectsWithPrefix(folder.key, undefined)
-  return objects.map(o => o.key)
+  return objects.map((o) => o.key)
 }
-
 
 /**
  * List files and folders directly under the specified folder path that
  * can be displayed in the file explorer.
  * Excludes the placeholder object for the folder itself.
  */
-export async function listDisplayableItemsInFolder(folder: Path): Promise<Result<{
-  files: R2Item[]
-  folders: R2Item[]
-}>> {
+export async function listDisplayableItemsInFolder(folder: Path): Promise<
+  Result<{
+    files: R2Item[]
+    folders: R2Item[]
+  }>
+> {
   return safeAsync(async () => {
-
     const { objects, delimitedPrefixes } = await _listObjectsWithPrefix(folder.key, '/')
 
     console.log('Objects in folder:', {
-      'object keys': objects.map(o => o.key),
+      'object keys': objects.map((o) => o.key),
       'delimited prefixes': delimitedPrefixes,
     })
 
-    const files = objects.filter((obj) =>
-      // Exclude the object that is a placeholder for the empty folder
-      !obj.key.endsWith('/')
-    ).map((obj) => {
-      return {
-        path: Paths.fromR2Key(obj.key),
-        size: obj.size,
-        lastModified: obj.customMetadata?.lastModified
-          ? new Date(parseInt(obj.customMetadata.lastModified))
-          : obj.uploaded,
-      }
-    })
+    const files = objects
+      .filter(
+        (obj) =>
+          // Exclude the object that is a placeholder for the empty folder
+          !obj.key.endsWith('/')
+      )
+      .map((obj) => {
+        return {
+          path: Paths.fromR2Key(obj.key),
+          size: obj.size,
+          lastModified: obj.customMetadata?.lastModified
+            ? new Date(parseInt(obj.customMetadata.lastModified))
+            : obj.uploaded,
+        }
+      })
 
     // Convert delimitedPrefixes to folder FileItems
     const folders = delimitedPrefixes.map((prefix) => ({
@@ -121,15 +116,16 @@ export async function _deleteObjects(itemPaths: Path[]): Promise<Result<void>> {
   return safeAsync(async () => {
     if (itemPaths.length === 0) return
 
-    console.log(`item paths to delete:`, itemPaths)
-
-    const keysToDelete = (await Promise.all(itemPaths.map(async item => 
-      item.isFolder
-        ? await listAllKeysInFolder(item) // Get all keys under the folder
-        : [item.key] // Single file
-    ))).flat()
-
-    console.log('Deleting keys:', keysToDelete)
+    const keysToDelete = (
+      await Promise.all(
+        itemPaths.map(
+          async (item) =>
+            item.isFolder
+              ? await listAllKeysInFolder(item) // Get all keys under the folder
+              : [item.key] // Single file
+        )
+      )
+    ).flat()
 
     const { env } = getCloudflareContext()
     await env.FILES.delete(keysToDelete)
@@ -148,19 +144,18 @@ export async function _createFolder(baseFolder: Path, name: string): Promise<Res
     if (!name || !name.trim()) {
       throw new Error('Folder name cannot be empty')
     }
-  
+
     // Remove invalid characters
     const sanitizedName = name.trim().replace(/[<>:"/\\|?*]/g, '')
     if (sanitizedName !== name.trim()) {
       throw new Error('Folder name contains invalid characters')
     }
-  
+
     const folderKey = Paths.getChildFolder(baseFolder, sanitizedName).key
-  
+
     const { env } = getCloudflareContext()
     await env.FILES.put(folderKey, null)
   })
 }
 
 export const createFolder = withAdminProtection(_createFolder)
-

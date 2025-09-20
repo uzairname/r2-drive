@@ -1,5 +1,5 @@
 import { Upload } from 'lucide-react'
-import React, { useState, useEffect, ReactNode } from 'react'
+import React, { ReactNode, useEffect, useState } from 'react'
 
 interface DropZoneProps {
   onFileDrop?: (files: File[]) => void
@@ -27,7 +27,7 @@ export function DropZone({ onFileDrop, children, className = '' }: DropZoneProps
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    
+
     if (e.dataTransfer.types.includes('Files')) {
       setIsDragOver(true)
     }
@@ -36,11 +36,11 @@ export function DropZone({ onFileDrop, children, className = '' }: DropZoneProps
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    
+
     // Only hide overlay if leaving the container bounds
     const rect = e.currentTarget.getBoundingClientRect()
     const { clientX: x, clientY: y } = e
-    
+
     if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
       setIsDragOver(false)
     }
@@ -49,7 +49,7 @@ export function DropZone({ onFileDrop, children, className = '' }: DropZoneProps
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    
+
     if (e.dataTransfer.types.includes('Files')) {
       setIsDragOver(true)
     }
@@ -59,7 +59,7 @@ export function DropZone({ onFileDrop, children, className = '' }: DropZoneProps
     e.preventDefault()
     e.stopPropagation()
     setIsDragOver(false)
-    
+
     const files = Array.from(e.dataTransfer.files)
     if (files.length > 0 && onFileDrop) {
       onFileDrop(files)
@@ -67,7 +67,7 @@ export function DropZone({ onFileDrop, children, className = '' }: DropZoneProps
   }
 
   return (
-    <div 
+    <div
       className={`relative ${className} ${
         isDragOver ? 'border-primary border-2 bg-primary/5' : ''
       }`}
@@ -77,7 +77,7 @@ export function DropZone({ onFileDrop, children, className = '' }: DropZoneProps
       onDrop={handleDrop}
     >
       {isDragOver && (
-        <div 
+        <div
           className="absolute inset-0 bg-primary/10 border-2 border-dashed border-primary rounded-lg z-50 flex items-center justify-center pointer-events-none"
           style={{ minHeight: '200px' }}
         >
@@ -85,7 +85,9 @@ export function DropZone({ onFileDrop, children, className = '' }: DropZoneProps
             <div className="flex flex-col items-center gap-3 text-primary">
               <Upload className="h-8 w-8" />
               <p className="text-lg font-medium">Drop files or folders here</p>
-              <p className="text-sm text-muted-foreground">Release to upload to current directory</p>
+              <p className="text-sm text-muted-foreground">
+                Release to upload to current directory
+              </p>
             </div>
           </div>
         </div>

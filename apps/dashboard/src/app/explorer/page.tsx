@@ -1,6 +1,6 @@
 'use client'
 
-import { R2BucketNavigator } from '@/components/file-navigator'
+import { BucketNavigator } from '@/components/bucket-navigator'
 import { Header } from '@/components/header'
 import { Suspense } from 'react'
 
@@ -9,7 +9,7 @@ export default function ExplorerPage() {
     <div className="p-6  max-w-4xl mx-auto flex flex-col h-screen">
       <Suspense fallback={<div className="animate-pulse text-center">Loading...</div>}>
         <Header />
-        <R2BucketNavigator />
+        <BucketNavigator />
       </Suspense>
     </div>
   )

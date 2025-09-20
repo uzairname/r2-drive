@@ -1,4 +1,3 @@
-import { safeAsync } from '@/lib/result'
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { NextRequest, NextResponse } from 'next/server'
 

@@ -1,6 +1,8 @@
 import { Path, Paths } from '@/lib/path'
-import { R2Item } from '@/lib/r2'
+import { deleteObjects } from '@/lib/r2'
+import { R2Item } from '@/types/item'
 import { useCallback, useState } from 'react'
+import { toast } from 'sonner'
 
 export interface DeleteState {
   isDeleting: boolean
@@ -9,22 +11,22 @@ export interface DeleteState {
 }
 
 export interface DeleteActions {
-  onDeleteSelected: (selectedItems: string[], items: R2Item[]) => void
+  onDeleteItems: (keys: string[], items: R2Item[]) => void
   onDeleteItem: (path: Path) => void
-  handleConfirmDelete: () => Promise<void>
+  onConfirmDelete: () => Promise<void>
   setShowDeleteDialog: (show: boolean) => void
 }
 
 export interface UseFileDeleteProps {
-  onDelete: (items: Path[]) => Promise<void>
+  onFilesChange: () => Promise<void>
 }
 
-export function useFileDelete({ onDelete }: UseFileDeleteProps): DeleteState & DeleteActions {
+export function useFileDelete({ onFilesChange }: UseFileDeleteProps): DeleteState & DeleteActions {
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [itemsToDelete, setItemsToDelete] = useState<Path[]>([])
 
-  const onDeleteSelected = (selectedItems: string[]) => {
+  const onDeleteItems = (selectedItems: string[]) => {
     if (selectedItems.length === 0) return
     setItemsToDelete(selectedItems.map(Paths.fromR2Key))
     setShowDeleteDialog(true)
@@ -35,28 +37,33 @@ export function useFileDelete({ onDelete }: UseFileDeleteProps): DeleteState & D
     setShowDeleteDialog(true)
   }
 
-  const handleConfirmDelete = useCallback(async () => {
+  const onConfirmDelete = useCallback(async () => {
     setIsDeleting(true)
-    try {
-      await onDelete(itemsToDelete)
-    } catch (error) {
-      console.error('Error deleting items:', error)
-    } finally {
-      setIsDeleting(false)
-      setItemsToDelete([])
-      setShowDeleteDialog(false)
+    const result = await deleteObjects(itemsToDelete)
+    setItemsToDelete([])
+
+    if (!result.success) {
+      toast.error(`Failed to delete`, { description: result.error.message })
+    } else {
+      const itemCount = itemsToDelete.length
+      toast.success(`Successfully deleted ${itemCount} ${itemCount === 1 ? 'item' : 'items'}`)
+      await onFilesChange()
     }
-  }, [itemsToDelete, onDelete])
+    setIsDeleting(false)
+    setShowDeleteDialog(false)
+  }, [itemsToDelete])
 
   return {
     // State
-    isDeleting,
-    showDeleteDialog,
     itemsToDelete,
     // Actions
-    onDeleteSelected,
+    onDeleteItems,
     onDeleteItem,
-    handleConfirmDelete,
+    onConfirmDelete,
+
+    // Dialog
+    isDeleting,
+    showDeleteDialog,
     setShowDeleteDialog,
   }
 }
