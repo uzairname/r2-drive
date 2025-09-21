@@ -6,7 +6,7 @@ initOpenNextCloudflareForDev()
 
 const nextConfig: NextConfig = {
   /* config options here */
-  transpilePackages: ['@workspace/ui'],
+  transpilePackages: ['@r2-drive/ui'],
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb',

@@ -1,8 +1,8 @@
 'use client'
 
-import { Avatar, AvatarFallback, AvatarImage } from '@workspace/ui/components/avatar'
-import { Badge } from '@workspace/ui/components/badge'
-import { Button } from '@workspace/ui/components/button'
+import { Avatar, AvatarFallback, AvatarImage } from '@r2-drive/ui/components/avatar'
+import { Badge } from '@r2-drive/ui/components/badge'
+import { Button } from '@r2-drive/ui/components/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,7 +10,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@workspace/ui/components/dropdown-menu'
+} from '@r2-drive/ui/components/dropdown-menu'
 import { LogIn, LogOut, Settings, Shield, User } from 'lucide-react'
 import { signIn, signOut, useSession } from 'next-auth/react'
 import { useState } from 'react'

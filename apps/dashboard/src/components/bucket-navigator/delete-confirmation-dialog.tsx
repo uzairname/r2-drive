@@ -1,7 +1,7 @@
 'use client'
 
 import { Path } from '@/lib/path'
-import { Button } from '@workspace/ui/components/button'
+import { Button } from '@r2-drive/ui/components/button'
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@workspace/ui/components/dialog'
+} from '@r2-drive/ui/components/dialog'
 import { Trash2 } from 'lucide-react'
 
 export interface DeleteConfirmationDialogProps {

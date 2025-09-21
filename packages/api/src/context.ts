@@ -1,9 +1,16 @@
-import * as trpcNext from '@trpc/server/adapters/next';
+import { getCloudflareContext } from '@opennextjs/cloudflare'
+import { Session } from 'next-auth'
+import { isUserAdmin } from './auth'
 
-export async function createContext(opts: trpcNext.CreateNextContextOptions) {
+export async function createContext({ session }: { session: Session | null }) {
+  const { env } = getCloudflareContext()
+  const isAdmin = isUserAdmin(session, env)
+
   return {
-    // Add your context here
-  };
+    session,
+    env,
+    isAdmin,
+  }
 }
 
-export type Context = Awaited<ReturnType<typeof createContext>>;
+export type Context = Awaited<ReturnType<typeof createContext>>

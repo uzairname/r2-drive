@@ -20,7 +20,7 @@ export function BucketNavigator() {
   const ops = useFileOperations({
     path: fileExplorer.path,
     onFilesChange: async () => {
-      await fileExplorer.fetchItems(fileExplorer.path)
+      await fileExplorer.refreshItems(fileExplorer.path)
     },
   })
 
@@ -37,7 +37,7 @@ export function BucketNavigator() {
               <R2Breadcrumbs
                 bucketName={fileExplorer.bucketName}
                 path={fileExplorer.path}
-                onClick={fileExplorer.navigateToFolder}
+                onClick={fileExplorer.setPath}
               />
               <CopyLinkButton path={fileExplorer.path} />
             </div>
@@ -54,7 +54,7 @@ export function BucketNavigator() {
             selectedItems={fileExplorer.selectedItemKeys}
             onItemSelect={fileExplorer.onItemSelect}
             onSelectAll={fileExplorer.onSelectAll}
-            onFolderClick={fileExplorer.navigateToFolder}
+            onFolderClick={fileExplorer.setPath}
             onDeleteItem={ops.delete.onDeleteItem}
             onDownloadItems={ops.download.downloadItems}
             tableSort={{

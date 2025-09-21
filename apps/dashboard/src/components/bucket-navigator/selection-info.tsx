@@ -1,5 +1,5 @@
 import { AdminOnly } from '@/hooks/use-admin'
-import { Button } from '@workspace/ui/components/button'
+import { Button } from '@r2-drive/ui/components/button'
 import { Download, Trash2 } from 'lucide-react'
 
 export interface R2SelectionInfoProps {

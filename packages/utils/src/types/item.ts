@@ -1,4 +1,4 @@
-import { Path } from '@/lib/path'
+import { Path } from '../path'
 
 export interface ItemUploadProgress {
   fileName: string
@@ -9,7 +9,7 @@ export interface ItemUploadProgress {
   isMultipart?: boolean
 }
 
-export interface R2Item {
+export interface UIR2Item {
   path: Path
   size: number
   lastModified?: Date

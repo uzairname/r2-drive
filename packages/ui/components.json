@@ -11,10 +11,10 @@
   },
   "iconLibrary": "lucide",
   "aliases": {
-    "components": "@workspace/ui/components",
-    "utils": "@workspace/ui/lib/utils",
-    "hooks": "@workspace/ui/hooks",
-    "lib": "@workspace/ui/lib",
-    "ui": "@workspace/ui/components"
+    "components": "@r2-drive/ui/components",
+    "utils": "@r2-drive/ui/lib/utils",
+    "hooks": "@r2-drive/ui/hooks",
+    "lib": "@r2-drive/ui/lib",
+    "ui": "@r2-drive/ui/components"
   }
 }

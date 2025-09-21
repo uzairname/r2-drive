@@ -1,13 +1,13 @@
 'use client'
 
-import { Button } from '@workspace/ui/components/button'
+import { Button } from '@r2-drive/ui/components/button'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@workspace/ui/components/dialog'
+} from '@r2-drive/ui/components/dialog'
 import { Chrome, HardDrive } from 'lucide-react'
 import { signIn } from 'next-auth/react'
 

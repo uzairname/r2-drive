@@ -1,8 +1,8 @@
 import { Path } from '@/lib/path'
 import { uploadFiles } from '@/lib/upload'
 import { trpc } from '@/trpc/client'
-import { type ItemUploadProgress } from '@/types/item'
-import { type UploadOperations } from '@workspace/api/routers/upload'
+import { type UploadOperations } from '@r2-drive/api/routers/upload'
+import { ItemUploadProgress } from '@r2-drive/utils/types/item'
 import { useCallback, useRef, useState } from 'react'
 import { toast } from 'sonner'
 

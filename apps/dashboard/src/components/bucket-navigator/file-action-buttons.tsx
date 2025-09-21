@@ -1,10 +1,10 @@
-import { Button } from '@workspace/ui/components/button'
+import { Button } from '@r2-drive/ui/components/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@workspace/ui/components/dropdown-menu'
+} from '@r2-drive/ui/components/dropdown-menu'
 import { FolderPlus, Plus, Upload } from 'lucide-react'
 
 export interface FileActionButtonsProps {

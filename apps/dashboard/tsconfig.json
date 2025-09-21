@@ -1,5 +1,5 @@
 {
-  "extends": "@workspace/typescript-config/nextjs.json",
+  "extends": "@r2-drive/config/typescript/r2-drive.json",
   "compilerOptions": {
     "plugins": [
       {
@@ -8,14 +8,20 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
-      "@workspace/api": ["../../packages/api/src"],
-      "@workspace/api/*": ["../../packages/api/src/*"],
-      "@workspace/ui/*": ["../../packages/ui/src/*"],
-      "@workspace/ui": ["../../packages/ui/src"]
+      "@r2-drive/api": ["../../packages/api/src"],
+      "@r2-drive/api/*": ["../../packages/api/src/*"],
+      "@r2-drive/ui/*": ["../../packages/ui/src/*"],
+      "@r2-drive/ui": ["../../packages/ui/src"]
     },
-    "types": ["./worker-configuration.d.ts", "node"],
+    "types": ["node", "@r2-drive/config/dist/cloudflare-env.d.ts"],
     "allowJs": true
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "../../packages/utils/src/types/item.ts"
+  ],
+  "exclude": ["node_modules", ".next"]
 }

@@ -1,7 +1,8 @@
 import { getMimeType } from '@/lib/file-utils'
-import { R2Item } from '@/types/item'
+import { UIR2Item } from '@r2-drive/utils/types/item'
 import {
   Archive,
+  File,
   FileCode,
   FileJson,
   FileSpreadsheet,
@@ -13,7 +14,7 @@ import {
   Video,
 } from 'lucide-react'
 
-export function ItemIcon({ item }: { item: R2Item }) {
+export function ItemIcon({ item }: { item: UIR2Item }) {
   return item.path.isFolder ? (
     <Folder className="h-5 w-5 text-primary" />
   ) : (
@@ -59,7 +60,7 @@ export function ItemIcon({ item }: { item: R2Item }) {
         mimeType === 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
       )
         return <FileType2 className="h-5 w-5 text-orange-600" /> // No FilePpt, use FileType2
-      return <FileType2 className="h-5 w-5 text-muted-foreground" />
+      return <File className="h-5 w-5 text-muted-foreground" />
     })()
   )
 }

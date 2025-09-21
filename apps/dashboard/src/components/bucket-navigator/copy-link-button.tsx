@@ -1,5 +1,5 @@
 import { Path, Paths } from '@/lib/path'
-import { Button } from '@workspace/ui/components/button'
+import { Button } from '@r2-drive/ui/components/button'
 import { Check, Link } from 'lucide-react'
 import React from 'react'
 import { toast } from 'sonner'

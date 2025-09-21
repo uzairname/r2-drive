@@ -1,18 +1,18 @@
 import { Path, Paths } from '@/lib/path'
-import { Button } from '@workspace/ui/components/button'
+import { Button } from '@r2-drive/ui/components/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@workspace/ui/components/dropdown-menu'
+} from '@r2-drive/ui/components/dropdown-menu'
 import { ChevronRight, HardDrive, MoreHorizontal } from 'lucide-react'
 import React from 'react'
 
 const max_visible_segments = 4
 
 export interface R2BreadcrumbsProps {
-  bucketName: string
+  bucketName: string | undefined
   path: Path
   onClick: (path: Path) => void
 }
@@ -67,7 +67,7 @@ export function R2Breadcrumbs({ bucketName, path, onClick }: R2BreadcrumbsProps)
                   {hiddenSegments.map((segment, index) => {
                     return (
                       <DropdownMenuItem key={index} onClick={() => onClick(segment)}>
-                        {segment.name || bucketName}
+                        {segment.name}
                       </DropdownMenuItem>
                     )
                   })}
@@ -105,7 +105,7 @@ export function R2Breadcrumbs({ bucketName, path, onClick }: R2BreadcrumbsProps)
   return (
     <div className="flex items-center gap-2 text-sm h-10">
       <BreadcrumbButton path={Paths.getRoot()} isFirst>
-        {bucketName}
+        {bucketName || 'My Bucket'}
       </BreadcrumbButton>
       {renderBreadcrumbsContent()}
     </div>

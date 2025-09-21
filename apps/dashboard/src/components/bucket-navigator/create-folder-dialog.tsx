@@ -1,14 +1,14 @@
 'use client'
 
-import { Button } from '@workspace/ui/components/button'
+import { Button } from '@r2-drive/ui/components/button'
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@workspace/ui/components/dialog'
-import { Input } from '@workspace/ui/components/input'
+} from '@r2-drive/ui/components/dialog'
+import { Input } from '@r2-drive/ui/components/input'
 import { useEffect, useState } from 'react'
 
 interface CreateFolderDialogProps {

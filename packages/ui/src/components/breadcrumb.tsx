@@ -1,7 +1,7 @@
 import * as React from 'react'
 
+import { cn } from '@r2-drive/ui/lib/utils'
 import { Slot } from '@radix-ui/react-slot'
-import { cn } from '@workspace/ui/lib/utils'
 import { ChevronRight, MoreHorizontal } from 'lucide-react'
 
 function Breadcrumb({ ...props }: React.ComponentProps<'nav'>) {

@@ -1,6 +1,6 @@
 import { formatBytes } from '@/lib/file-utils'
-import { type ItemUploadProgress } from '@/types/item'
-import { Progress } from '@workspace/ui/components/progress'
+import { Progress } from '@r2-drive/ui/components/progress'
+import { ItemUploadProgress } from '@r2-drive/utils/types/item'
 import { CheckCircle, Upload, XCircle } from 'lucide-react'
 import React, { useEffect } from 'react'
 

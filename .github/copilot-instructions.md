@@ -16,7 +16,7 @@ Follow these guidelines to maximize productivity as an AI coding agent in this c
 
 ## Project Conventions
 
-- **UI imports:** Use `@workspace/ui` alias for shared UI components.
+- **UI imports:** Use `@r2-drive/ui` alias for shared UI components.
 - **shadcn/ui:** All UI components are based on [shadcn/ui](https://ui.shadcn.com/). When adding new UI components, do not write them from scratch—use:
     `bash
   pnpm dlx shadcn@latest add <component>

@@ -1,8 +1,7 @@
 import { AdminOnly } from '@/hooks/use-admin'
 import { Path } from '@/lib/path'
-import { R2Item } from '@/types/item'
-import { Button } from '@workspace/ui/components/button'
-import { Checkbox } from '@workspace/ui/components/checkbox'
+import { Button } from '@r2-drive/ui/components/button'
+import { Checkbox } from '@r2-drive/ui/components/checkbox'
 import {
   Table,
   TableBody,
@@ -10,8 +9,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@workspace/ui/components/table'
-import { truncateString } from '@workspace/ui/lib/utils'
+} from '@r2-drive/ui/components/table'
+import { truncateString } from '@r2-drive/ui/lib/utils'
+import { UIR2Item } from '@r2-drive/utils/types/item'
 import { ArrowDown, ArrowUp, ArrowUpDown, Calendar, Download, Trash2 } from 'lucide-react'
 import React from 'react'
 import { formatBytes } from '../../lib/file-utils'
@@ -33,7 +33,7 @@ export function R2FileTable({
   onDownloadItems,
   tableSort,
 }: {
-  items: R2Item[]
+  items: UIR2Item[]
   selectedItems: string[]
   onItemSelect: (key: string) => void
   onSelectAll: () => void

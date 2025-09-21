@@ -2,13 +2,17 @@
  * Result type for consistent error handling across the application.
  * Provides a standardized way to handle success and failure cases.
  */
-export type Result<T = void, E = Error> = { success: true; data: T } | { success: false; error: E }
+export type Result<T = void, E = Error> =
+  | (T extends void ? { success: true; data?: void } : { success: true; data: T })
+  | { success: false; error: E }
 
 /**
  * Creates a successful result
  */
-export function ok<T>(data: T): Result<T, never> {
-  return { success: true, data }
+export function ok(): Result<void, never>
+export function ok<T>(data: T): Result<T, never>
+export function ok<T>(data?: T): Result<T, never> {
+  return { success: true, data } as Result<T, never>
 }
 
 /**

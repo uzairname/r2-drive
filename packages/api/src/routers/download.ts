@@ -1,12 +1,8 @@
-import { z } from 'zod';
-import { publicProcedure } from '../trpc';
-import { getCloudflareContext } from '@opennextjs/cloudflare'
+import { z } from 'zod'
+import { publicProcedure } from '../trpc'
 
 export const download = publicProcedure
-    .input(z.object({ key: z.string() }))
-    .query(async ({ input }) => {
-
-      const { env } = getCloudflareContext()
-
-      return {};
-    })
+  .input(z.object({ key: z.string() }))
+  .query(async ({ input }) => {
+    return {}
+  })

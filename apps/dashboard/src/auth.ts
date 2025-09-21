@@ -1,5 +1,5 @@
-import { isUserAdmin } from '@/lib/auth-helpers'
 import { getCloudflareContext } from '@opennextjs/cloudflare'
+import { isUserAdmin } from '@r2-drive/api/auth'
 import NextAuth from 'next-auth'
 import Google from 'next-auth/providers/google'
 
@@ -16,13 +16,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth((req) => {
       }),
     ],
     callbacks: {
-      async session({ session, token, user }) {
-        const email = user?.email || token?.email || session?.user?.email
-        let isAdmin = false
-        if (email) {
-          isAdmin = await isUserAdmin(email)
-        }
-        console.log(`[AUTH] isAdmin: ${isAdmin} for email: ${email}`)
+      async session({ session }) {
+        const isAdmin = isUserAdmin(session, env)
         return {
           ...session,
           user: {

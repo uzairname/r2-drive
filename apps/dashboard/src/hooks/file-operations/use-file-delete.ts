@@ -1,6 +1,6 @@
 import { Path, Paths } from '@/lib/path'
-import { deleteObjects } from '@/lib/r2'
-import { R2Item } from '@/types/item'
+import { trpc } from '@/trpc/client'
+import { UIR2Item } from '@r2-drive/utils/types/item'
 import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -11,7 +11,7 @@ export interface DeleteState {
 }
 
 export interface DeleteActions {
-  onDeleteItems: (keys: string[], items: R2Item[]) => void
+  onDeleteItems: (keys: string[], items: UIR2Item[]) => void
   onDeleteItem: (path: Path) => void
   onConfirmDelete: () => Promise<void>
   setShowDeleteDialog: (show: boolean) => void
@@ -37,9 +37,11 @@ export function useFileDelete({ onFilesChange }: UseFileDeleteProps): DeleteStat
     setShowDeleteDialog(true)
   }
 
+  const deleteObjects = trpc.deleteObjects.useMutation()
+
   const onConfirmDelete = useCallback(async () => {
     setIsDeleting(true)
-    const result = await deleteObjects(itemsToDelete)
+    const result = await deleteObjects.mutateAsync(itemsToDelete)
     setItemsToDelete([])
 
     if (!result.success) {

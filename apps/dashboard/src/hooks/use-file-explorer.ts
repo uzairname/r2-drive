@@ -1,7 +1,7 @@
 import { Path, Paths } from '@/lib/path'
-import { createFolder, getBucketName, listDisplayableItemsInFolder } from '@/lib/r2'
-import { Result } from '@/lib/result'
-import { R2Item } from '@/types/item'
+import { trpc } from '@/trpc/client'
+import { Result } from '@r2-drive/utils/result'
+import { UIR2Item } from '@r2-drive/utils/types/item'
 import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
@@ -10,30 +10,27 @@ type SortKey = 'name' | 'size' | 'lastModified'
 type SortDirection = 'asc' | 'desc'
 
 export interface FileExplorerState {
-  bucketName: string
+  bucketName: string | undefined
   path: Path
-  items: R2Item[]
+  items: UIR2Item[]
   sortKey: SortKey
   sortDirection: SortDirection
   selectedItemKeys: string[]
   isLoading: boolean
-  sortedItems: R2Item[]
+  sortedItems: UIR2Item[]
 }
 
 export interface FileExplorerActions {
   onSort: (key: SortKey) => void
-  navigateToFolder: (folder: Path) => void
+  setPath: (folder: Path) => void
   onItemSelect: (itemId: string) => void
   onSelectAll: () => void
   onCreateFolder: (folderName: string) => Promise<Result>
-  fetchItems: (currentPath: Path) => Promise<void>
 }
 
 export function useFileExplorer(): FileExplorerState & FileExplorerActions {
   // State
-  const [bucketName, setBucketName] = useState<string>('')
   const [path, setPath] = useState<Path>(Paths.getRoot())
-  const [items, setItems] = useState<R2Item[]>([])
   const [sortKey, setSortKey] = useState<SortKey>('name')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const [selectedItems, setSelectedItems] = useState<string[]>([])
@@ -42,9 +39,7 @@ export function useFileExplorer(): FileExplorerState & FileExplorerActions {
   const searchParams = useSearchParams()
 
   // Fetch bucket name on mount
-  useEffect(() => {
-    getBucketName().then(setBucketName)
-  }, [])
+  const bucketName = trpc.bucket.useQuery().data?.name
 
   // Parse URL path on mount and when search params change
   useEffect(() => {
@@ -52,38 +47,12 @@ export function useFileExplorer(): FileExplorerState & FileExplorerActions {
     setPath(fullPath)
   }, [searchParams])
 
-  const refreshItems = useCallback(
-    async (path: Path) => {
-      setIsLoading(true)
-      const result = await listDisplayableItemsInFolder(path)
-      if (result.success) {
-        const { files: objects, folders } = result.data
-        setItems([...folders, ...objects])
-        setSelectedItems([])
-      } else {
-        toast.error(`Failed to load files`, {
-          description: `${result.error.message}`,
-          action: {
-            label: 'Retry',
-            onClick: () => refreshItems(path),
-          },
-        })
-        setItems([])
-      }
-      setIsLoading(false)
-    },
-    [toast]
-  )
-
-  useEffect(() => {
-    refreshItems(path)
-  }, [path, refreshItems])
 
   // Sorting logic: folders always first, then sort by key/direction
   const sortedItems = useMemo(() => {
     const folders = items.filter((i) => i.path.isFolder)
     const files = items.filter((i) => !i.path.isFolder)
-    const sortFn = (a: R2Item, b: R2Item) => {
+    const sortFn = (a: UIR2Item, b: UIR2Item) => {
       let aVal
       let bVal
 
@@ -135,22 +104,25 @@ export function useFileExplorer(): FileExplorerState & FileExplorerActions {
     }
   }, [selectedItems.length, items])
 
+  const createFolder = trpc.createFolder.useMutation()
+
   const onCreateFolder = useCallback(
-    async (folderName: string) => {
-      const result = await createFolder(path, folderName)
+    async (folderName: string): Promise<Result> => {
+      const result = await createFolder.mutateAsync({ baseFolder: path, name: folderName })
 
       if (result.success) {
-        await refreshItems(path)
+        // Refresh the items in the table
       } else {
         toast.error(`Failed to create folder`, {
           description: result.error.message,
         })
       }
-
       return result
     },
-    [path, refreshItems, toast]
+    [path, toast]
   )
+
+  onCreateFolder
 
   return {
     // State
@@ -164,10 +136,9 @@ export function useFileExplorer(): FileExplorerState & FileExplorerActions {
     sortedItems,
     // Actions
     onSort,
-    navigateToFolder: setPath,
+    setPath,
     onItemSelect,
     onSelectAll,
     onCreateFolder,
-    fetchItems: refreshItems,
   }
 }
