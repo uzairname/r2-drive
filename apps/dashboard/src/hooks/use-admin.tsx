@@ -13,7 +13,6 @@ export function useIsAdmin() {
     isAuthenticated: status === 'authenticated',
     session,
   }
-  // Removed stray closing brace
 }
 
 /**
