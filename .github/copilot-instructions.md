@@ -27,7 +27,6 @@ Follow these guidelines to maximize productivity as an AI coding agent in this c
 ## Patterns & Practices
 
 - **Simplicity First:** When adding features, always prefer the most standard and transparent implementation that solves the problem. Do not add more features than needed or requested. Favor code maintainability and clarity over over-engineering.
-- **File actions:** See `apps/dashboard/src/lib/actions.ts` and `apps/dashboard/src/lib/r2-client.ts` for file operations.
 - **Conventions:** Most patterns follow standard Next.js and React practices.
 - **Single Responsibility:** Each component or module should have a clear, singular purpose. Avoid mixing concerns. Whenever possible, abstract repeated logic into reusable functions or components.
 - **Redundant Code:** If you find excessive callback nesting or redundant code, you can simplify or remove it, but ensure the functionality remains intact.

@@ -10,7 +10,7 @@
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
     "deploy": "opennextjs-cloudflare build && dotenv -e .env opennextjs-cloudflare deploy",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "cf-typegen": "wrangler types --env-interface CloudflareEnv ../../packages/configs/dist/cloudflare-env.d.ts"
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv ../../packages/config/dist/cloudflare-env.d.ts"
   },
   "dependencies": {
     "@auth/core": "^0.40.0",
@@ -22,6 +22,7 @@
     "@trpc/react-query": "^11.5.1",
     "@trpc/server": "^11.5.1",
     "@r2-drive/api": "workspace:*",
+    "@r2-drive/config": "workspace:*",
     "@r2-drive/ui": "workspace:*",
     "@r2-drive/utils": "workspace:*",
     "aws4fetch": "^1.0.20",
@@ -43,9 +44,8 @@
     "@types/node": "^20.19.14",
     "@types/react": "^19.1.9",
     "@types/react-dom": "^19.1.7",
+    "@r2-drive/ts-config": "workspace:*",
     "@r2-drive/eslint-config": "workspace:*",
-    "@r2-drive/typescript-config": "workspace:*",
-    "@r2-drive/config": "workspace:*",
     "class-variance-authority": "^0.7.0",
     "dotenv-cli": "^10.0.0",
     "eslint": "^9",

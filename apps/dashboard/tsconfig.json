@@ -1,5 +1,5 @@
 {
-  "extends": "@r2-drive/config/typescript/r2-drive.json",
+  "extends": "@r2-drive/ts-config/r2-drive.json",
   "compilerOptions": {
     "plugins": [
       {
@@ -7,21 +7,26 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"],
-      "@r2-drive/api": ["../../packages/api/src"],
-      "@r2-drive/api/*": ["../../packages/api/src/*"],
-      "@r2-drive/ui/*": ["../../packages/ui/src/*"],
-      "@r2-drive/ui": ["../../packages/ui/src"]
+      "@/*": [
+        "./src/*"
+      ]
     },
-    "types": ["node", "@r2-drive/config/dist/cloudflare-env.d.ts"],
-    "allowJs": true
+    "types": [
+      "node"
+    ],
+    "allowJs": true,
+    "jsx": "preserve"
   },
   "include": [
-    "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "../../packages/utils/src/types/item.ts"
+    "../../packages/config/dist/cloudflare-env.d.ts"
+    // Uncomment if needed
+    // ".next/types/**/*.ts",
   ],
-  "exclude": ["node_modules", ".next"]
+  "exclude": [
+    "node_modules",
+    ".next"
+  ]
 }

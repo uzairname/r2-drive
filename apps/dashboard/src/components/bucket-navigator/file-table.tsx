@@ -11,10 +11,10 @@ import {
   TableRow,
 } from '@r2-drive/ui/components/table'
 import { truncateString } from '@r2-drive/ui/lib/utils'
+import { formatBytes } from '@r2-drive/utils/file-utils'
 import { UIR2Item } from '@r2-drive/utils/types/item'
 import { ArrowDown, ArrowUp, ArrowUpDown, Calendar, Download, Trash2 } from 'lucide-react'
 import React from 'react'
-import { formatBytes } from '../../lib/file-utils'
 import { ItemIcon } from './item-icon'
 
 export interface TableSortProps {

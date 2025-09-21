@@ -1,8 +1,7 @@
 {
   "name": "@r2-drive/eslint-config",
-  "version": "0.0.0",
   "type": "module",
-  "private": true,
+  "packageManager": "pnpm@10.17.0",
   "exports": {
     "./base": "./base.js",
     "./next-js": "./next.js",

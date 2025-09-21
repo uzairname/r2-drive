@@ -1,4 +1,4 @@
-import { getMimeType } from '@/lib/file-utils'
+import { getMimeType } from '@r2-drive/utils/file-utils'
 import { UIR2Item } from '@r2-drive/utils/types/item'
 import {
   Archive,

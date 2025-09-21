@@ -26,6 +26,7 @@ export interface FileExplorerActions {
   onItemSelect: (itemId: string) => void
   onSelectAll: () => void
   onCreateFolder: (folderName: string) => Promise<Result>
+  refreshItems: (folder: Path) => Promise<void>
 }
 
 export function useFileExplorer(): FileExplorerState & FileExplorerActions {
@@ -34,19 +35,50 @@ export function useFileExplorer(): FileExplorerState & FileExplorerActions {
   const [sortKey, setSortKey] = useState<SortKey>('name')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const [selectedItems, setSelectedItems] = useState<string[]>([])
-  const [isLoading, setIsLoading] = useState<boolean>(false)
 
   const searchParams = useSearchParams()
 
   // Fetch bucket name on mount
   const bucketName = trpc.bucket.useQuery().data?.name
 
+  // Use tRPC list endpoint to fetch items for current path
+  const {
+    data: listResult,
+    isLoading,
+    refetch: refetchItems,
+  } = trpc.list.useQuery({ folder: path })
+
+  // Extract items from the result and combine files and folders
+  const items: UIR2Item[] = useMemo(() => {
+    if (!listResult?.success) return []
+    const allItems = [...listResult.data.folders, ...listResult.data.files]
+    // Convert string lastModified to Date if it exists
+    return allItems.map((item) => ({
+      ...item,
+      lastModified: item.lastModified ? new Date(item.lastModified) : undefined,
+    }))
+  }, [listResult])
+
+  // Clear selection when path changes
+  useEffect(() => {
+    setSelectedItems([])
+  }, [path])
+
+  // Refresh function using tRPC query invalidation
+  const utils = trpc.useUtils()
+  const refreshItems = useCallback(
+    async (folder: Path) => {
+      await utils.list.invalidate({ folder })
+      await refetchItems()
+    },
+    [utils.list, refetchItems]
+  )
+
   // Parse URL path on mount and when search params change
   useEffect(() => {
     const fullPath = Paths.fromURLSearchParams(searchParams)
     setPath(fullPath)
   }, [searchParams])
-
 
   // Sorting logic: folders always first, then sort by key/direction
   const sortedItems = useMemo(() => {
@@ -111,7 +143,8 @@ export function useFileExplorer(): FileExplorerState & FileExplorerActions {
       const result = await createFolder.mutateAsync({ baseFolder: path, name: folderName })
 
       if (result.success) {
-        // Refresh the items in the table
+        // Refresh the items in the table using the new tRPC integration
+        await refreshItems(path)
       } else {
         toast.error(`Failed to create folder`, {
           description: result.error.message,
@@ -119,7 +152,7 @@ export function useFileExplorer(): FileExplorerState & FileExplorerActions {
       }
       return result
     },
-    [path, toast]
+    [path, createFolder, refreshItems]
   )
 
   onCreateFolder
@@ -140,5 +173,6 @@ export function useFileExplorer(): FileExplorerState & FileExplorerActions {
     onItemSelect,
     onSelectAll,
     onCreateFolder,
+    refreshItems,
   }
 }

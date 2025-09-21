@@ -1,5 +1,5 @@
 {
-  "extends": "@r2-drive/config/typescript/r2-drive.json",
+  "extends": "@r2-drive/ts-config/r2-drive.json",
   "compilerOptions": {
     "types": ["@r2-drive/config/dist/cloudflare-env.d.ts"]
   }

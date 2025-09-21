@@ -1,11 +1,6 @@
 {
   "name": "@r2-drive/api",
-  "version": "1.0.0",
   "type": "module",
-  "private": true,
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
-  "license": "ISC",
   "packageManager": "pnpm@10.17.0",
   "dependencies": {
     "@opennextjs/cloudflare": "^1.8.2",
@@ -16,6 +11,15 @@
     "@r2-drive/utils": "workspace:*"
   },
   "devDependencies": {
-    "@r2-drive/config": "workspace:*"
+    "@r2-drive/config": "workspace:*",
+    "@r2-drive/ts-config": "workspace:*"
+  },
+  "exports": {
+    ".": {
+      "import": "./src/index.ts"
+    },
+    "./*": {
+      "import": "./src/*.ts"
+    }
   }
 }
