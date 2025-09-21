@@ -83,6 +83,7 @@ export function BucketNavigator() {
           onDownload={() =>
             ops.download.downloadItems(fileExplorer.selectedItemKeys.map((i) => Paths.fromR2Key(i)))
           }
+          onClose={() => fileExplorer.deselectItems()}
           isDeleting={ops.delete.isDeleting}
           isDownloading={ops.download.isDownloading}
         />

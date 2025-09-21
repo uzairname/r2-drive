@@ -27,6 +27,7 @@ export interface FileExplorerActions {
   onSelectAll: () => void
   onCreateFolder: (folderName: string) => Promise<Result>
   refreshItems: (folder: Path) => Promise<void>
+  deselectItems: () => Promise<void>
 }
 
 export function useFileExplorer(): FileExplorerState & FileExplorerActions {
@@ -66,6 +67,7 @@ export function useFileExplorer(): FileExplorerState & FileExplorerActions {
 
   // Refresh function using tRPC query invalidation
   const utils = trpc.useUtils()
+
   const refreshItems = useCallback(
     async (folder: Path) => {
       await utils.list.invalidate({ folder })
@@ -134,7 +136,11 @@ export function useFileExplorer(): FileExplorerState & FileExplorerActions {
     } else {
       setSelectedItems(items.map((item) => item.path.key))
     }
-  }, [selectedItems.length, items])
+  }, [selectedItems])
+
+  const deselectItems = useCallback(async () => {
+    setSelectedItems([])
+  }, [])
 
   const createFolder = trpc.createFolder.useMutation()
 
@@ -174,5 +180,6 @@ export function useFileExplorer(): FileExplorerState & FileExplorerActions {
     onSelectAll,
     onCreateFolder,
     refreshItems,
+    deselectItems,
   }
 }
