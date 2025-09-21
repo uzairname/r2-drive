@@ -10,13 +10,7 @@ export interface DownloadActions {
   downloadItems: (items: Path[]) => Promise<void>
 }
 
-export function useFileDownload(
-  {
-    // downloadItems,
-  }: {
-    // downloadItems: (selectedItems: Path[]) => Promise<unknown>
-  }
-): DownloadState & DownloadActions {
+export function useFileDownload(): DownloadState & DownloadActions {
   const [isDownloading, setIsDownloading] = useState(false)
 
   const downloadItems = async (items: Path[]) => {

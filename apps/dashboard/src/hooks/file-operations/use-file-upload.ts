@@ -1,6 +1,8 @@
 import { Path } from '@/lib/path'
 import { uploadFiles } from '@/lib/upload'
+import { trpc } from '@/trpc/client'
 import { type ItemUploadProgress } from '@/types/item'
+import { type UploadOperations } from '@workspace/api/routers/upload'
 import { useCallback, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -8,6 +10,7 @@ export interface UseFileUploadState {
   uploadProgress: ItemUploadProgress[]
   fileInputRef: React.RefObject<HTMLInputElement | null>
   folderInputRef: React.RefObject<HTMLInputElement | null>
+  isUploading: boolean
 }
 
 export interface UseFileUploadActions {
@@ -15,7 +18,6 @@ export interface UseFileUploadActions {
   uploadFiles: (files: File[]) => Promise<void>
   triggerFileUpload: () => void
   triggerFolderUpload: () => void
-  onSuccess?: () => void
 }
 
 export interface UseFileUploadProps {
@@ -30,8 +32,18 @@ export function useFileUpload({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)
   const [uploadProgress, setUploadProgress] = useState<ItemUploadProgress[]>([])
+  const [isUploading, setIsUploading] = useState(false)
 
-  const handleProgressUpdate = (progress: ItemUploadProgress) => {
+  // tRPC mutations
+  const prepareUpload = trpc.upload.prepare.useMutation()
+  const completeUpload = trpc.upload.complete.useMutation()
+  // Create operations object with tRPC mutations
+  const operations: UploadOperations = {
+    prepare: (input) => prepareUpload.mutateAsync(input),
+    complete: (input) => completeUpload.mutateAsync(input),
+  }
+
+  const handleProgressUpdate = useCallback((progress: ItemUploadProgress) => {
     setUploadProgress((prev) => {
       const updated = [...prev]
       const index = updated.findIndex((item) => item.fileName === progress.fileName)
@@ -42,21 +54,30 @@ export function useFileUpload({
       }
       return updated
     })
-  }
+  }, [])
 
   const onUploadFiles = useCallback(
     async (files: File[]) => {
+      if (isUploading) return
+
+      setIsUploading(true)
       setUploadProgress([]) // Reset progress for new upload session
-      const result = await uploadFiles(path, files, handleProgressUpdate)
-      if (!result.success) {
-        return void toast.error('Failed to upload files', {
-          description: result.error,
-        })
-      } else {
-        await onFilesChange()
+
+      try {
+        const result = await uploadFiles(path, files, operations, handleProgressUpdate)
+
+        if (!result.success) {
+          toast.error('Failed to upload files', {
+            description: result.error,
+          })
+        } else {
+          await onFilesChange()
+        }
+      } finally {
+        setIsUploading(false)
       }
     },
-    [path]
+    [path, prepareUpload, completeUpload, onFilesChange, handleProgressUpdate, isUploading]
   )
 
   // Handle file or folder upload from input
@@ -71,19 +92,24 @@ export function useFileUpload({
     [onUploadFiles]
   )
 
-  const triggerFileUpload = () => {
-    fileInputRef.current?.click()
-  }
+  const triggerFileUpload = useCallback(() => {
+    if (!isUploading) {
+      fileInputRef.current?.click()
+    }
+  }, [isUploading])
 
-  const triggerFolderUpload = () => {
-    folderInputRef.current?.click()
-  }
+  const triggerFolderUpload = useCallback(() => {
+    if (!isUploading) {
+      folderInputRef.current?.click()
+    }
+  }, [isUploading])
 
   return {
     // State
     uploadProgress,
     fileInputRef,
     folderInputRef,
+    isUploading,
     // Actions
     uploadFromHTMLInput,
     uploadFiles: onUploadFiles,

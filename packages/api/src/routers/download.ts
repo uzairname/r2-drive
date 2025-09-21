@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { router, publicProcedure } from '../trpc';
+import { publicProcedure } from '../trpc';
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 
 export const download = publicProcedure
@@ -8,9 +8,5 @@ export const download = publicProcedure
 
       const { env } = getCloudflareContext()
 
-      const url = await env.FILES.get(input.key)
-
-      return {
-        url
-      };
+      return {};
     })

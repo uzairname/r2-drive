@@ -2,13 +2,17 @@
 
 import { UPLOAD_CONFIG } from '@/config/app-config'
 import { ItemUploadProgress } from '@/types/item'
+import { UploadOperations } from '@workspace/api/routers/upload'
 import pLimit from 'p-limit'
 import { Path, Paths } from './path'
 import { err, ok, Result } from './result'
 
+// Infer types from tRPC router - no manual type definitions needed!
+
 export async function uploadFiles(
   folder: Path,
   files: File[],
+  operations: UploadOperations,
   onProgress?: (progress: ItemUploadProgress) => void
 ): Promise<Result<void, string>> {
   // Throw error if duplicate file keys are found
@@ -48,153 +52,152 @@ export async function uploadFiles(
     })),
   }
 
-  const response = await fetch('/api/upload/multipart/prepare', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(prepareOptions),
-  })
+  try {
+    const { singleUploads, multiPartUploads } = await operations.prepare(prepareOptions)
 
-  if (!response.ok) {
-    return err(`Failed to prepare upload: ${response.statusText}`)
-  }
+    // 2. Upload files
 
-  const { singleUploads, multiPartUploads } = (await response.json()) as {
-    singleUploads: { key: string; url: string }[]
-    multiPartUploads: { key: string; uploadId: string; partUrls: string[] }[]
-  }
+    const limit = pLimit(maxConcurrentUploads)
 
-  // 2. Upload files
+    const singlepartPromises = smallFiles.map((file) => {
+      const uploadInfo = singleUploads.find((u) => u.key === Paths.filePath(folder, file).key)
+      if (!uploadInfo?.url) return Promise.resolve()
 
-  const limit = pLimit(maxConcurrentUploads)
+      console.log('Uploading small file to URL:', uploadInfo.url)
 
-  const singlepartPromises = smallFiles.map((file) => {
-    const uploadInfo = singleUploads.find((u) => u.key === Paths.filePath(folder, file).key)
-    if (!uploadInfo?.url) return Promise.resolve()
-
-    console.log('Uploading small file to URL:', uploadInfo.url)
-
-    return limit(() =>
-      fetch(uploadInfo.url, {
-        method: 'PUT',
-        body: file,
-      }).then((res) => {
-        onProgress?.({
-          fileName: file.name,
-          uploadedBytes: file.size,
-          totalBytes: file.size,
-          success: res.ok,
-          isMultipart: false,
-          errorMsg: res.ok ? undefined : `Upload failed with status ${res.status}`,
-        })
-      })
-    )
-  })
-
-  await Promise.all(singlepartPromises)
-
-  const largeFilesProgress = largeFiles.map((file) => ({
-    fileName: file.name,
-    totalBytes: file.size,
-    uploadedBytes: 0,
-  }))
-
-  const multipartPromises = largeFiles
-    .map((file) => {
-      const fileUploadInfo = multiPartUploads.find(
-        (u) => u.key === Paths.filePath(folder, file).key
-      )
-      if (!fileUploadInfo) throw new Error(`Missing upload info for file ${file.name}`)
-
-      const partPromises = fileUploadInfo.partUrls.map((url, index) => {
-        return limit(async () => {
-          const chunk = file.slice(index * chunkSize, Math.min((index + 1) * chunkSize, file.size))
-          const response = await fetch(url, {
-            method: 'PUT',
-            body: chunk,
+      return limit(() =>
+        fetch(uploadInfo.url, {
+          method: 'PUT',
+          body: file,
+        }).then((res) => {
+          onProgress?.({
+            fileName: file.name,
+            uploadedBytes: file.size,
+            totalBytes: file.size,
+            success: res.ok,
+            isMultipart: false,
+            errorMsg: res.ok ? undefined : `Upload failed with status ${res.status}`,
           })
-          const etag = response.headers.get('ETag')?.replace(/"/g, '')
-          if (!etag)
-            throw new Error(`Missing ETag in response for part ${index + 1} of file ${file.name}`)
-
-          // Bytes uploaded in this chunk
-          const currentChunkSize = chunk.size
-
-          // Update progress
-          const progressInfo = largeFilesProgress.find((p) => p.fileName === file.name)
-          if (progressInfo) {
-            progressInfo.uploadedBytes += currentChunkSize
-            onProgress?.({
-              fileName: file.name,
-              totalBytes: progressInfo.totalBytes,
-              uploadedBytes: progressInfo.uploadedBytes,
-              isMultipart: true,
-            })
-          }
-
-          return {
-            key: fileUploadInfo.key,
-            partNumber: index + 1,
-            uploadId: fileUploadInfo.uploadId,
-            etag,
-            fileSize: file.size,
-          }
         })
-      })
-
-      return partPromises
+      )
     })
-    .flat()
 
-  const multipartCompletions = await Promise.all(multipartPromises)
+    await Promise.all(singlepartPromises)
 
-  if (multipartPromises.length > 0) {
-    // Group parts by uploadId
-    const completionMap: Record<
-      string,
-      {
-        key: string
-        uploadId: string
-        parts: { partNumber: number; etag: string }[]
-        fileSize: number
-      }
-    > = {}
-    for (const part of multipartCompletions) {
-      if (!completionMap[part.uploadId]) {
-        completionMap[part.uploadId] = {
-          key: part.key,
-          uploadId: part.uploadId,
-          parts: [],
-          fileSize: part.fileSize,
+    const largeFilesProgress = largeFiles.map((file) => ({
+      fileName: file.name,
+      totalBytes: file.size,
+      uploadedBytes: 0,
+    }))
+
+    const multipartPromises = largeFiles
+      .map((file) => {
+        const fileUploadInfo = multiPartUploads.find(
+          (u) => u.key === Paths.filePath(folder, file).key
+        )
+        if (!fileUploadInfo) throw new Error(`Missing upload info for file ${file.name}`)
+
+        const partPromises = fileUploadInfo.partUrls.map((url: string, index: number) => {
+          return limit(async () => {
+            const chunk = file.slice(
+              index * chunkSize,
+              Math.min((index + 1) * chunkSize, file.size)
+            )
+            const response = await fetch(url, {
+              method: 'PUT',
+              body: chunk,
+            })
+            const etag = response.headers.get('ETag')?.replace(/"/g, '')
+            if (!etag)
+              throw new Error(`Missing ETag in response for part ${index + 1} of file ${file.name}`)
+
+            // Bytes uploaded in this chunk
+            const currentChunkSize = chunk.size
+
+            // Update progress
+            const progressInfo = largeFilesProgress.find((p) => p.fileName === file.name)
+            if (progressInfo) {
+              progressInfo.uploadedBytes += currentChunkSize
+              onProgress?.({
+                fileName: file.name,
+                totalBytes: progressInfo.totalBytes,
+                uploadedBytes: progressInfo.uploadedBytes,
+                isMultipart: true,
+              })
+            }
+
+            return {
+              key: fileUploadInfo.key,
+              partNumber: index + 1,
+              uploadId: fileUploadInfo.uploadId,
+              etag,
+              fileSize: file.size,
+            }
+          })
+        })
+
+        return partPromises
+      })
+      .flat()
+
+    const multipartCompletions = await Promise.all(multipartPromises)
+
+    if (multipartPromises.length > 0) {
+      // Group parts by uploadId
+      const completionMap: Record<
+        string,
+        {
+          key: string
+          uploadId: string
+          parts: { partNumber: number; etag: string }[]
+          fileSize: number
         }
+      > = {}
+      for (const part of multipartCompletions) {
+        if (!completionMap[part.uploadId]) {
+          completionMap[part.uploadId] = {
+            key: part.key,
+            uploadId: part.uploadId,
+            parts: [],
+            fileSize: part.fileSize,
+          }
+        }
+        completionMap[part.uploadId]!.parts.push({ partNumber: part.partNumber, etag: part.etag })
       }
-      completionMap[part.uploadId]!.parts.push({ partNumber: part.partNumber, etag: part.etag })
+
+      // Complete multipart uploads using provided operations
+      const completionPromises = Object.values(completionMap).map(
+        ({ key, uploadId, parts, fileSize }) => {
+          return limit(async () => {
+            try {
+              await operations.complete({ key, uploadId, parts })
+              onProgress?.({
+                fileName: Paths.fromR2Key(key).name,
+                uploadedBytes: fileSize,
+                totalBytes: fileSize,
+                success: true,
+                isMultipart: true,
+              })
+            } catch (error) {
+              onProgress?.({
+                fileName: Paths.fromR2Key(key).name,
+                uploadedBytes: fileSize,
+                totalBytes: fileSize,
+                success: false,
+                isMultipart: true,
+                errorMsg: error instanceof Error ? error.message : 'Completion failed',
+              })
+            }
+          })
+        }
+      )
+
+      await Promise.all(completionPromises)
     }
 
-    // Complete multipart uploads
-    const completionPromises = Object.values(completionMap).map(
-      ({ key, uploadId, parts, fileSize }) => {
-        return limit(async () => {
-          const response = await fetch('/api/upload/multipart/complete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ key, uploadId, parts }),
-          })
-          onProgress?.({
-            fileName: Paths.fromR2Key(key).name,
-            uploadedBytes: fileSize,
-            totalBytes: fileSize,
-            success: response.ok,
-            isMultipart: true,
-            errorMsg: response.ok ? undefined : `Completion failed with status ${response.status}`,
-          })
-        })
-      }
-    )
-
-    await Promise.all(completionPromises)
+    return ok(undefined)
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+    return err(`Failed to upload files: ${errorMessage}`)
   }
-
-  return ok(undefined)
 }

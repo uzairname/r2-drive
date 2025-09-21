@@ -1,10 +1,10 @@
 'use client'
 
 import { UploadProgress } from '@/components/bucket-navigator/upload-progress'
+import { useFileOperations } from '@/hooks/file-operations'
 import { AdminOnly } from '@/hooks/use-admin'
 import { useDialogs } from '@/hooks/use-dialogs'
 import { useFileExplorer } from '@/hooks/use-file-explorer'
-import { useFileOperations } from '@/hooks/use-file-operations'
 import { Paths } from '@/lib/path'
 import { R2Breadcrumbs } from './bucket-navigator/breadcrumbs'
 import { CopyLinkButton } from './bucket-navigator/copy-link-button'
@@ -14,7 +14,6 @@ import { DropZone } from './bucket-navigator/drop-zone'
 import { FileActionButtons } from './bucket-navigator/file-action-buttons'
 import { R2FileTable } from './bucket-navigator/file-table'
 import { R2SelectionInfo } from './bucket-navigator/selection-info'
-import { trpc } from '@/trpc/client'
 
 export function BucketNavigator() {
   const fileExplorer = useFileExplorer()

@@ -1,6 +1,6 @@
-import { auth } from '@/auth';
-import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
-import { appRouter, createContext } from '@workspace/api';
+import { auth } from '@/auth'
+import { fetchRequestHandler } from '@trpc/server/adapters/fetch'
+import { appRouter } from '@workspace/api'
 
 const handler = (req: Request) =>
   fetchRequestHandler({
@@ -11,6 +11,6 @@ const handler = (req: Request) =>
       const session = await auth()
       return { session }
     },
-  });
+  })
 
-export { handler as GET, handler as POST };
+export { handler as GET, handler as POST }
