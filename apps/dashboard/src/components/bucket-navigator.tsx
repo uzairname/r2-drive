@@ -14,6 +14,7 @@ import { DropZone } from './bucket-navigator/drop-zone'
 import { FileActionButtons } from './bucket-navigator/file-action-buttons'
 import { R2FileTable } from './bucket-navigator/file-table'
 import { R2SelectionInfo } from './bucket-navigator/selection-info'
+import { trpc } from '@/trpc/client'
 
 export function BucketNavigator() {
   const fileExplorer = useFileExplorer()
