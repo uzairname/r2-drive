@@ -66,11 +66,12 @@ export function useFileUpload({
       try {
         // Determine upload method based on environment
         const isDev = process.env.NODE_ENV === 'development'
-        if (isDev) {
+        const usePresigned = true
+        if (usePresigned) {
+          result = await uploadFilesSignedURL(path, files, operations, handleProgressUpdate)
+        } else {
           toast.warning('Using binding to upload. Only for development. Wont work for large files.')
           var result = await uploadFilesViaBinding(path, files, handleProgressUpdate)
-        } else {
-          result = await uploadFilesSignedURL(path, files, operations, handleProgressUpdate)
         }
 
         if (!result.success) {

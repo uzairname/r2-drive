@@ -50,6 +50,8 @@ async function uploadSmallFile(
   const totalBytes = buffer.byteLength
   const contentType = file.type || 'application/octet-stream'
 
+  const lastModified = new Date(file.lastModified)
+
   onProgress?.({
     fileName: file.name,
     uploadedBytes: 0,
@@ -57,7 +59,10 @@ async function uploadSmallFile(
     isMultipart: false,
   })
 
-  const result = await putObject(key, file, { contentType })
+  const result = await putObject(key, file, { 
+    contentType,
+    lastModified, 
+  })
 
   if (result.success) {
     onProgress?.({
