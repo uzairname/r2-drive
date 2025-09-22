@@ -1,58 +1,161 @@
 'use client'
 
-import { UploadOperations } from '@r2-drive/api/routers/upload'
+import { type PresignedUploadOperations } from '@r2-drive/api/routers/r2/upload'
 import { UPLOAD_CONFIG } from '@r2-drive/utils/app-config'
-import { err, ok, Result } from '@r2-drive/utils/result'
+import { Result, safeAsync } from '@r2-drive/utils/result'
 import { ItemUploadProgress } from '@r2-drive/utils/types/item'
 import pLimit from 'p-limit'
+import { putObject } from './actions'
 import { Path, Paths } from './path'
 
-// Infer types from tRPC router - no manual type definitions needed!
-
-export async function uploadFiles(
-  folder: Path,
+/**
+ * Uploads files to R2 by sending them to the backend, which then uses the R2 binding
+ */
+export async function uploadFilesViaBinding(
+  path: Path,
   files: File[],
-  operations: UploadOperations,
   onProgress?: (progress: ItemUploadProgress) => void
-): Promise<Result<void, string>> {
-  // Throw error if duplicate file keys are found
-  const fileKeys = files.map((f) => Paths.filePath(folder, f).key)
-  const duplicatesExist = new Set(fileKeys).size !== fileKeys.length
-  if (duplicatesExist) {
-    return err('Attempted to upload files with duplicate keys to the same folder')
-  }
+): Promise<Result> {
+  return safeAsync(async () => {
+    // Separate files by upload method
+    const regularFiles = files.filter((file) => file.size <= UPLOAD_CONFIG.MULTIPART_CHUNK_SIZE)
+    const multipartFiles = files.filter((file) => file.size > UPLOAD_CONFIG.MULTIPART_CHUNK_SIZE)
 
-  const chunkSize = UPLOAD_CONFIG.MULTIPART_CHUNK_SIZE
-  const maxConcurrentUploads = UPLOAD_CONFIG.MAX_CONCURRENT_UPLOADS
+    if (multipartFiles.length > 0) {
+      await uploadFilesMultipart(path, multipartFiles)
+    }
 
-  // Report initial progress for all files
-  files.forEach((file) => {
+    if (regularFiles.length > 0) {
+      const limit = pLimit(UPLOAD_CONFIG.MAX_CONCURRENT_UPLOADS)
+      await Promise.all(
+        regularFiles.map((file) => limit(() => uploadSmallFile(path, file, onProgress)))
+      )
+    }
+  })
+}
+
+async function uploadSmallFile(
+  path: Path,
+  file: File,
+  onProgress?: (progress: ItemUploadProgress) => void
+) {
+  // Construct the full upload path using webkitRelativePath for folder uploads
+  const key = Paths.filePath(path, file).key
+
+  // Use regular server-side upload for smaller files
+  console.log(`Using regular upload for file: ${file.name} (${file.size} bytes)`)
+
+  // Upload the file on the server
+  const buffer = await file.arrayBuffer()
+  const totalBytes = buffer.byteLength
+  const contentType = file.type || 'application/octet-stream'
+
+  onProgress?.({
+    fileName: file.name,
+    uploadedBytes: 0,
+    totalBytes,
+    isMultipart: false,
+  })
+
+  const result = await putObject(key, file, { contentType })
+
+  if (result.success) {
+    onProgress?.({
+      fileName: file.name,
+      uploadedBytes: file.size,
+      totalBytes: file.size,
+      success: true,
+      isMultipart: false,
+    })
+  } else {
+    const errorMsg = result.error instanceof Error ? result.error.message : String(result.error)
     onProgress?.({
       fileName: file.name,
       uploadedBytes: 0,
       totalBytes: file.size,
-      isMultipart: file.size > chunkSize,
+      success: false,
+      isMultipart: false,
+      errorMsg,
     })
-  })
-
-  // 1. Get presigned URLs
-
-  // Files that will be uploaded in a single part
-  const smallFiles = files.filter((file) => file.size <= chunkSize)
-  // Files that will be uploaded in multiple parts
-  const largeFiles = files.filter((file) => file.size > chunkSize)
-
-  const prepareOptions = {
-    smallFiles: smallFiles.map((file) => ({
-      key: Paths.filePath(folder, file).key,
-    })),
-    largeFiles: largeFiles.map((file) => ({
-      key: Paths.filePath(folder, file).key,
-      partCount: Math.ceil(file.size / chunkSize),
-    })),
   }
 
-  try {
+  return result
+}
+
+export async function uploadFilesMultipart(path: Path, files: File[]) {
+  for (const file of files) {
+    const result = uploadFileMultipart(Paths.filePath(path, file), file)
+  }
+}
+
+async function uploadFileMultipart(path: Path, file: File): Promise<Result<void, string>> {
+  throw new Error('Not implemented')
+}
+
+/**
+ * Upload files to R2 using presigned URLs obtained from the backend.
+ * Supports both single-part and multi-part uploads based on file size.
+ * Reports upload progress via the onProgress callback.
+ * @param folder - The destination folder path in R2
+ * @param files - Array of File objects to upload
+ * @param operations - Object containing prepare and complete functions for presigned uploads
+ * @param onProgress - Optional callback to receive upload progress updates
+ * @returns Result indicating success or failure with an error message
+ */
+export async function uploadFilesSignedURL(
+  folder: Path,
+  files: File[],
+  operations: PresignedUploadOperations,
+  onProgress?: (progress: ItemUploadProgress) => void
+): Promise<Result> {
+  return safeAsync(async () => {
+    // Throw error if duplicate file keys are found
+    const fileKeys = files.map((f) => Paths.filePath(folder, f).key)
+    const duplicatesExist = new Set(fileKeys).size !== fileKeys.length
+    if (duplicatesExist) {
+      throw new Error('Attempted to upload files with duplicate keys to the same folder')
+    }
+
+    const chunkSize = UPLOAD_CONFIG.MULTIPART_CHUNK_SIZE
+    const maxConcurrentUploads = UPLOAD_CONFIG.MAX_CONCURRENT_UPLOADS
+
+    // Report initial progress for all files
+    files.forEach((file) => {
+      onProgress?.({
+        fileName: file.name,
+        uploadedBytes: 0,
+        totalBytes: file.size,
+        isMultipart: file.size > chunkSize,
+      })
+    })
+
+    // 1. Get presigned URLs
+
+    // Files that will be uploaded in a single part
+    const smallFiles = files.filter((file) => file.size <= chunkSize)
+    // Files that will be uploaded in multiple parts
+    const largeFiles = files.filter((file) => file.size > chunkSize)
+
+    const prepareOptions = {
+      smallFiles: smallFiles.map((file) => ({
+        key: Paths.filePath(folder, file).key,
+        metadata: {
+          contentType: file.type || 'application/octet-stream',
+          lastModified: file.lastModified,
+          dateCreated: file.lastModified, // Use lastModified as dateCreated fallback
+        },
+      })),
+      largeFiles: largeFiles.map((file) => ({
+        key: Paths.filePath(folder, file).key,
+        partCount: Math.ceil(file.size / chunkSize),
+        metadata: {
+          contentType: file.type || 'application/octet-stream',
+          lastModified: file.lastModified,
+          dateCreated: file.lastModified, // Use lastModified as dateCreated fallback
+        },
+      })),
+    }
+
     const { singleUploads, multiPartUploads } = await operations.prepare(prepareOptions)
 
     // 2. Upload files
@@ -69,6 +172,7 @@ export async function uploadFiles(
         fetch(uploadInfo.url, {
           method: 'PUT',
           body: file,
+          headers: uploadInfo.headers || {},
         }).then((res) => {
           onProgress?.({
             fileName: file.name,
@@ -194,10 +298,5 @@ export async function uploadFiles(
 
       await Promise.all(completionPromises)
     }
-
-    return ok(undefined)
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
-    return err(`Failed to upload files: ${errorMessage}`)
-  }
+  })
 }

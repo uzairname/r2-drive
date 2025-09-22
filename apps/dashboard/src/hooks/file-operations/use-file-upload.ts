@@ -1,7 +1,7 @@
 import { Path } from '@/lib/path'
-import { uploadFiles } from '@/lib/upload'
+import { uploadFilesSignedURL, uploadFilesViaBinding } from '@/lib/upload'
 import { trpc } from '@/trpc/client'
-import { type UploadOperations } from '@r2-drive/api/routers/upload'
+import { PresignedUploadOperations } from '@r2-drive/api/routers/r2/upload'
 import { ItemUploadProgress } from '@r2-drive/utils/types/item'
 import { useCallback, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -35,10 +35,10 @@ export function useFileUpload({
   const [isUploading, setIsUploading] = useState(false)
 
   // tRPC mutations
-  const prepareUpload = trpc.upload.prepare.useMutation()
-  const completeUpload = trpc.upload.complete.useMutation()
+  const prepareUpload = trpc.r2.upload.prepare.useMutation()
+  const completeUpload = trpc.r2.upload.complete.useMutation()
   // Create operations object with tRPC mutations
-  const operations: UploadOperations = {
+  const operations: PresignedUploadOperations = {
     prepare: (input) => prepareUpload.mutateAsync(input),
     complete: (input) => completeUpload.mutateAsync(input),
   }
@@ -64,11 +64,18 @@ export function useFileUpload({
       setUploadProgress([]) // Reset progress for new upload session
 
       try {
-        const result = await uploadFiles(path, files, operations, handleProgressUpdate)
+        // Determine upload method based on environment
+        const isDev = process.env.NODE_ENV === 'development'
+        if (isDev) {
+          toast.warning('Using binding to upload. Only for development. Wont work for large files.')
+          var result = await uploadFilesViaBinding(path, files, handleProgressUpdate)
+        } else {
+          result = await uploadFilesSignedURL(path, files, operations, handleProgressUpdate)
+        }
 
         if (!result.success) {
           toast.error('Failed to upload files', {
-            description: result.error,
+            description: result.error.message || String(result.error),
           })
         } else {
           await onFilesChange()

@@ -37,7 +37,7 @@ export function useFileDelete({ onFilesChange }: UseFileDeleteProps): DeleteStat
     setShowDeleteDialog(true)
   }
 
-  const deleteObjects = trpc.deleteObjects.useMutation()
+  const deleteObjects = trpc.r2.deleteObjects.useMutation()
 
   const onConfirmDelete = useCallback(async () => {
     setIsDeleting(true)

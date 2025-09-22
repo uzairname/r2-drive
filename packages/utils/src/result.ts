@@ -29,11 +29,14 @@ export function makeError(e: unknown): Error {
 /**
  * Safely executes an async function and wraps the result
  */
-export async function safeAsync<T>(fn: () => Promise<T>): Promise<Result<T, Error>> {
+export async function safeAsync<T>(fn: () => Promise<T>, log = true): Promise<Result<T, Error>> {
   try {
     const data = await fn()
     return ok(data)
   } catch (error) {
+    if (log) {
+      console.error(error)
+    }
     return err(makeError(error))
   }
 }

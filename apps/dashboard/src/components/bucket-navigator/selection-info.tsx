@@ -20,7 +20,6 @@ export function R2SelectionInfo({
   isDeleting,
   isDownloading,
 }: R2SelectionInfoProps) {
-
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && onClose) {
@@ -36,7 +35,6 @@ export function R2SelectionInfo({
   return (
     <div className="fixed bottom-5 left-1/2 transform -translate-x-1/2 z-50 p-4 bg-background border border-border rounded-lg shadow-lg backdrop-blur-sm">
       <div className="flex items-center justify-between gap-4">
-        
         {onClose && (
           <Button
             variant="ghost"

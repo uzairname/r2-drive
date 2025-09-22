@@ -1,8 +1,8 @@
 import { PathSchema } from '@r2-drive/utils'
 import { safeAsync } from '@r2-drive/utils/result'
 import { z } from 'zod'
-import { listAllKeysInFolder } from '../services/r2'
-import { adminProcedure } from '../trpc'
+import { listAllKeysInFolder } from '../../services/r2'
+import { adminProcedure } from '../../trpc'
 
 export const deleteObjects = adminProcedure
   .input(z.array(PathSchema))

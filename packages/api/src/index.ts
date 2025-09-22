@@ -1,3 +1,3 @@
 export * from './context'
-export * from './root'
+export * from './routers/root'
 export * from './trpc'

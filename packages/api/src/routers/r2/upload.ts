@@ -1,19 +1,27 @@
 import { inferProcedureInput } from '@trpc/server'
 import { AwsClient } from 'aws4fetch'
 import { z } from 'zod'
-import { adminProcedure } from '../trpc'
+import { adminProcedure } from '../../trpc'
 
-type PrepareUploadInput = inferProcedureInput<typeof upload.prepare>
-type PrepareUploadOutput = Awaited<ReturnType<typeof upload.prepare>>
-type CompleteUploadInput = inferProcedureInput<typeof upload.complete>
-type CompleteUploadOutput = Awaited<ReturnType<typeof upload.complete>>
+type PrepareUploadInput = inferProcedureInput<typeof uploadRouter.prepare>
+type PrepareUploadOutput = Awaited<ReturnType<typeof uploadRouter.prepare>>
+type CompleteUploadInput = inferProcedureInput<typeof uploadRouter.complete>
+type CompleteUploadOutput = Awaited<ReturnType<typeof uploadRouter.complete>>
 
-export interface UploadOperations {
+export interface PresignedUploadOperations {
   prepare: (input: PrepareUploadInput) => Promise<PrepareUploadOutput>
   complete: (input: CompleteUploadInput) => Promise<CompleteUploadOutput>
 }
 
-export const upload = {
+const MetadataSchema = z.object({
+  contentType: z.string().optional(),
+  lastModified: z.number().optional(),
+  dateCreated: z.number().optional(),
+})
+
+type Metadata = z.infer<typeof MetadataSchema>
+
+export const uploadRouter = {
   // Prepare upload - generates presigned URLs for single part and multipart uploads
   prepare: adminProcedure
     .input(
@@ -21,12 +29,14 @@ export const upload = {
         smallFiles: z.array(
           z.object({
             key: z.string(),
+            metadata: MetadataSchema.optional(),
           })
         ),
         largeFiles: z.array(
           z.object({
             key: z.string(),
             partCount: z.number().int().positive(),
+            metadata: MetadataSchema.optional(),
           })
         ),
       })
@@ -42,24 +52,44 @@ export const upload = {
           service: 's3',
         })
 
+        const getHeaders = (metadata: Metadata | undefined) => {
+          const headers: Record<string, string> = {}
+          if (metadata?.contentType) {
+            headers['Content-Type'] = metadata.contentType
+          }
+          if (metadata?.lastModified) {
+            headers['x-amz-meta-lastModified'] = metadata.lastModified.toString()
+          }
+          if (metadata?.dateCreated) {
+            headers['x-amz-meta-dateCreated'] = metadata.dateCreated.toString()
+          }
+          return headers
+        }
+
         // 1. Generate presigned URLs for single-part uploads
         const singleUploads = await Promise.all(
-          input.smallFiles.map(async ({ key }) => {
+          input.smallFiles.map(async ({ key, metadata }) => {
             const url = getR2Url(key, env)
+
+            const headers = getHeaders(metadata)
+
             // `signQuery: true` creates a presigned URL by adding auth info to query params
-            const signedUrl = await r2.sign(new Request(url, { method: 'PUT' }), {
+            const signedUrl = await r2.sign(new Request(url, { method: 'PUT', headers }), {
               aws: { signQuery: true },
             })
-            return { key, url: signedUrl.url }
+            return { key, url: signedUrl.url, headers }
           })
         )
 
         // 2. Initiate multipart uploads and generate presigned URLs for each part
         const multiPartUploads = await Promise.all(
-          input.largeFiles.map(async ({ key, partCount }) => {
+          input.largeFiles.map(async ({ key, partCount, metadata }) => {
             // Step A: Initiate the multipart upload to get an UploadId
             const createUploadUrl = `${getR2Url(key, env)}?uploads`
-            const createUploadRequest = await r2.sign(createUploadUrl, { method: 'POST' })
+
+            const headers = getHeaders(metadata)
+
+            const createUploadRequest = await r2.sign(createUploadUrl, { method: 'POST', headers })
             const createUploadResponse = await fetch(createUploadRequest)
 
             if (!createUploadResponse.ok) {

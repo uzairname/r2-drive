@@ -7,13 +7,9 @@
       }
     ],
     "paths": {
-      "@/*": [
-        "./src/*"
-      ]
+      "@/*": ["./src/*"]
     },
-    "types": [
-      "node"
-    ],
+    "types": ["node"],
     "allowJs": true,
     "jsx": "preserve"
   },
@@ -25,8 +21,5 @@
     // Uncomment if needed
     // ".next/types/**/*.ts",
   ],
-  "exclude": [
-    "node_modules",
-    ".next"
-  ]
+  "exclude": ["node_modules", ".next"]
 }

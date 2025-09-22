@@ -36,18 +36,14 @@ export function useFileExplorer(): FileExplorerState & FileExplorerActions {
   const [sortKey, setSortKey] = useState<SortKey>('name')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const [selectedItems, setSelectedItems] = useState<string[]>([])
-
   const searchParams = useSearchParams()
-
-  // Fetch bucket name on mount
-  const bucketName = trpc.bucket.useQuery().data?.name
 
   // Use tRPC list endpoint to fetch items for current path
   const {
     data: listResult,
     isLoading,
     refetch: refetchItems,
-  } = trpc.list.useQuery({ folder: path })
+  } = trpc.r2.list.useQuery({ folder: path })
 
   // Extract items from the result and combine files and folders
   const items: UIR2Item[] = useMemo(() => {
@@ -57,8 +53,11 @@ export function useFileExplorer(): FileExplorerState & FileExplorerActions {
     return allItems.map((item) => ({
       ...item,
       lastModified: item.lastModified ? new Date(item.lastModified) : undefined,
+      dateCreated: item.dateCreated ? new Date(item.dateCreated) : undefined,
     }))
   }, [listResult])
+
+  const bucketName = listResult?.success ? listResult.data.bucketName : undefined
 
   // Clear selection when path changes
   useEffect(() => {
@@ -70,10 +69,10 @@ export function useFileExplorer(): FileExplorerState & FileExplorerActions {
 
   const refreshItems = useCallback(
     async (folder: Path) => {
-      await utils.list.invalidate({ folder })
+      await utils.r2.list.invalidate({ folder })
       await refetchItems()
     },
-    [utils.list, refetchItems]
+    [utils.r2.list, refetchItems]
   )
 
   // Parse URL path on mount and when search params change
@@ -142,7 +141,7 @@ export function useFileExplorer(): FileExplorerState & FileExplorerActions {
     setSelectedItems([])
   }, [])
 
-  const createFolder = trpc.createFolder.useMutation()
+  const createFolder = trpc.r2.createFolder.useMutation()
 
   const onCreateFolder = useCallback(
     async (folderName: string): Promise<Result> => {

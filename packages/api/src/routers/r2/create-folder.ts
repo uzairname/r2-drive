@@ -1,7 +1,7 @@
 import { Paths, PathSchema } from '@r2-drive/utils/path'
 import { safeAsync } from '@r2-drive/utils/result'
 import { z } from 'zod'
-import { adminProcedure } from '../trpc'
+import { adminProcedure } from '../../trpc'
 
 export const createFolder = adminProcedure
   .input(

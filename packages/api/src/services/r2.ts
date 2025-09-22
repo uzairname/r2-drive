@@ -24,6 +24,7 @@ export async function _listObjectsWithPrefix(
       delimiter,
       limit,
       cursor,
+      include: ['httpMetadata', 'customMetadata'],
     })
 
     objects.push(...listing.objects)
@@ -60,15 +61,16 @@ export async function listDisplayableItemsInFolder(
   Result<{
     files: UIR2Item[]
     folders: UIR2Item[]
+    bucketName: string
   }>
 > {
   return safeAsync(async () => {
     const { objects, delimitedPrefixes } = await _listObjectsWithPrefix(env, folder.key, '/')
 
-    console.log('Objects in folder:', {
-      'object keys': objects.map((o) => o.key),
-      'delimited prefixes': delimitedPrefixes,
-    })
+    // console.log('Objects in folder:', {
+    //   'object keys': objects.map((o) => o.key),
+    //   'delimited prefixes': delimitedPrefixes,
+    // })
 
     const files = objects
       .filter(
@@ -83,6 +85,10 @@ export async function listDisplayableItemsInFolder(
           lastModified: obj.customMetadata?.lastModified
             ? new Date(parseInt(obj.customMetadata.lastModified))
             : obj.uploaded,
+          contentType: obj.httpMetadata?.contentType,
+          dateCreated: obj.customMetadata?.dateCreated
+            ? new Date(parseInt(obj.customMetadata.dateCreated))
+            : undefined,
         }
       })
 
@@ -93,9 +99,12 @@ export async function listDisplayableItemsInFolder(
       lastModified: undefined,
     }))
 
+    const bucketName = env.R2_BUCKET_NAME
+
     return {
       files,
       folders,
+      bucketName,
     }
   })
 }

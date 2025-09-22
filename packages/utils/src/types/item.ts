@@ -13,4 +13,6 @@ export interface UIR2Item {
   path: Path
   size: number
   lastModified?: Date
+  contentType?: string
+  dateCreated?: Date
 }
