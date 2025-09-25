@@ -70,7 +70,11 @@ export function useFileExplorer(): FileExplorerState & FileExplorerActions {
   const refreshItems = useCallback(
     async (folder: Path) => {
       await utils.r2.list.invalidate({ folder })
+      // Refetch items to ensure UI is up to date
       await refetchItems()
+      // Filter selected items that no longer exist
+      const existingKeys = new Set(items.map((item) => item.path.key))
+      setSelectedItems((prev) => prev.filter((key) => existingKeys.has(key)))
     },
     [utils.r2.list, refetchItems]
   )

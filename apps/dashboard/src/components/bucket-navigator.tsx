@@ -13,19 +13,26 @@ import { DeleteConfirmationDialog } from './bucket-navigator/delete-confirmation
 import { DropZone } from './bucket-navigator/drop-zone'
 import { FileActionButtons } from './bucket-navigator/file-action-buttons'
 import { R2FileTable } from './bucket-navigator/file-table'
+import { OverwriteConfirmationDialog } from './bucket-navigator/overwrite-confirmation-dialog'
 import { R2SelectionInfo } from './bucket-navigator/selection-info'
 
 export function BucketNavigator() {
   const fileExplorer = useFileExplorer()
+  const dialogs = useDialogs()
+
+  // Get current file names for overwrite checking
+  const currentFiles = fileExplorer.items
+    .filter((item) => !item.path.isFolder)
+    .map((item) => item.path.name)
+
   const ops = useFileOperations({
     path: fileExplorer.path,
     onFilesChange: async () => {
       await fileExplorer.refreshItems(fileExplorer.path)
     },
+    currentFiles,
   })
 
-  // Extract dialog management
-  const dialogs = useDialogs()
   return (
     <>
       {/* Main Content */}
@@ -107,13 +114,22 @@ export function BucketNavigator() {
       />
 
       {/* Upload Progress Indicator */}
-      <UploadProgress uploads={ops.upload.uploadProgress} />
+      <UploadProgress uploads={ops.upload.uploadProgress} onCancel={ops.upload.cancelAllUploads} />
 
       {/* Create Folder Dialog */}
       <CreateFolderDialog
         open={dialogs.showCreateFolderDialog}
         onOpenChange={dialogs.setShowCreateFolderDialog}
         onCreateFolder={fileExplorer.onCreateFolder}
+      />
+
+      {/* Overwrite Confirmation Dialog */}
+      <OverwriteConfirmationDialog
+        open={ops.upload.showOverwriteConfirmDialog}
+        onOpenChange={ops.upload.setShowOverwriteConfirmDialog}
+        files={ops.upload.overwriteFiles}
+        onConfirm={ops.upload.confirmOverwrite}
+        onCancel={ops.upload.closeOverwriteConfirmDialog}
       />
 
       {/* Delete Confirmation Dialog */}

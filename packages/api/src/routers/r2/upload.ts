@@ -1,5 +1,6 @@
 import { inferProcedureInput } from '@trpc/server'
 import { AwsClient } from 'aws4fetch'
+import { createHash } from 'crypto'
 import { z } from 'zod'
 import { adminProcedure } from '../../trpc'
 
@@ -18,8 +19,6 @@ const MetadataSchema = z.object({
   lastModified: z.number().optional(),
   dateCreated: z.number().optional(),
 })
-
-type Metadata = z.infer<typeof MetadataSchema>
 
 export const uploadRouter = {
   // Prepare upload - generates presigned URLs for single part and multipart uploads
@@ -52,32 +51,16 @@ export const uploadRouter = {
           service: 's3',
         })
 
-        const getHeaders = (metadata: Metadata | undefined) => {
-          const headers: Record<string, string> = {}
-          if (metadata?.contentType) {
-            headers['Content-Type'] = metadata.contentType
-          }
-          if (metadata?.lastModified) {
-            headers['x-amz-meta-lastModified'] = metadata.lastModified.toString()
-          }
-          if (metadata?.dateCreated) {
-            headers['x-amz-meta-dateCreated'] = metadata.dateCreated.toString()
-          }
-          return headers
-        }
-
         // 1. Generate presigned URLs for single-part uploads
         const singleUploads = await Promise.all(
           input.smallFiles.map(async ({ key, metadata }) => {
             const url = getR2Url(key, env)
 
-            const headers = getHeaders(metadata)
-
             // `signQuery: true` creates a presigned URL by adding auth info to query params
-            const signedUrl = await r2.sign(new Request(url, { method: 'PUT', headers }), {
+            const signedUrl = await r2.sign(new Request(url, { method: 'PUT' }), {
               aws: { signQuery: true },
             })
-            return { key, url: signedUrl.url, headers }
+            return { key, url: signedUrl.url }
           })
         )
 
@@ -87,9 +70,7 @@ export const uploadRouter = {
             // Step A: Initiate the multipart upload to get an UploadId
             const createUploadUrl = `${getR2Url(key, env)}?uploads`
 
-            const headers = getHeaders(metadata)
-
-            const createUploadRequest = await r2.sign(createUploadUrl, { method: 'POST', headers })
+            const createUploadRequest = await r2.sign(createUploadUrl, { method: 'POST' })
             const createUploadResponse = await fetch(createUploadRequest)
 
             if (!createUploadResponse.ok) {
@@ -162,12 +143,13 @@ export const uploadRouter = {
           service: 's3',
         })
 
-        // Sign and send the request to R2
+        const md5 = createHash('md5').update(Buffer.from(xmlBody, 'utf8')).digest('base64')
+
         const completeRequest = await r2.sign(completeUploadUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/xml',
-            'Content-MD5': btoa(String.fromCharCode(...new TextEncoder().encode(xmlBody))),
+            'Content-MD5': md5,
           },
           body: xmlBody,
         })
@@ -187,12 +169,128 @@ export const uploadRouter = {
         throw new Error(`Failed to complete upload: ${errorMessage}`)
       }
     }),
+
+  // Cancel (abort) a single multipart upload
+  cancel: adminProcedure
+    .input(
+      z.object({
+        key: z.string(),
+        uploadId: z.string(),
+      })
+    )
+    .mutation(async ({ ctx: { env }, input }) => {
+      try {
+        const { key, uploadId } = input
+
+        if (!key || !uploadId) {
+          throw new Error('Missing key or uploadId for cancel')
+        }
+
+        const r2 = new AwsClient({
+          accessKeyId: env.R2_ACCESS_KEY_ID,
+          secretAccessKey: env.R2_SECRET_ACCESS_KEY,
+          region: 'auto',
+          service: 's3',
+        })
+
+        const abortUrl = `${getR2Url(key, env)}?uploadId=${encodeURIComponent(uploadId)}`
+
+        const abortRequest = await r2.sign(abortUrl, { method: 'DELETE' })
+        const abortResponse = await fetch(abortRequest)
+
+        if (!abortResponse.ok) {
+          const err = await abortResponse.text()
+          console.error('Failed to abort multipart upload:', err)
+          throw new Error(`Failed to abort upload: ${err}`)
+        }
+
+        return { success: true }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
+        console.error('Error cancelling upload:', error)
+        throw new Error(`Failed to cancel upload: ${errorMessage}`)
+      }
+    }),
+
+  // Cancel (abort) all multipart uploads optionally filtered by prefix
+  cancelAll: adminProcedure
+    .input(
+      z.object({
+        prefix: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx: { env }, input }) => {
+      try {
+        const { prefix } = input
+
+        const r2 = new AwsClient({
+          accessKeyId: env.R2_ACCESS_KEY_ID,
+          secretAccessKey: env.R2_SECRET_ACCESS_KEY,
+          region: 'auto',
+          service: 's3',
+        })
+
+        // List multipart uploads for the bucket (optionally filtered by prefix)
+        const listUrl = `${getR2Url('', env)}?uploads${prefix ? `&prefix=${encodeURIComponent(prefix)}` : ''}`
+
+        const listRequest = await r2.sign(listUrl, { method: 'GET' })
+        const listResponse = await fetch(listRequest)
+
+        if (!listResponse.ok) {
+          const err = await listResponse.text()
+          console.error('Failed to list multipart uploads:', err)
+          throw new Error(`Failed to list uploads: ${err}`)
+        }
+
+        const xml = await listResponse.text()
+        const uploads = parseUploadsList(xml)
+
+        let aborted = 0
+        for (const u of uploads) {
+          try {
+            const abortUrl = `${getR2Url(u.key, env)}?uploadId=${encodeURIComponent(u.uploadId)}`
+            const abortRequest = await r2.sign(abortUrl, { method: 'DELETE' })
+            const abortResponse = await fetch(abortRequest)
+
+            if (abortResponse.ok) aborted++
+            else {
+              const err = await abortResponse.text()
+              console.warn(`Failed to abort ${u.key} (${u.uploadId}):`, err)
+            }
+          } catch (e) {
+            console.warn('Error aborting upload', u, e)
+          }
+        }
+
+        return { success: true, total: uploads.length, aborted }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
+        console.error('Error cancelling all uploads:', error)
+        throw new Error(`Failed to cancel all uploads: ${errorMessage}`)
+      }
+    }),
 }
 
 // Helper function to parse upload ID from XML response
 function parseUploadId(xml: string): string | null {
   const uploadIdMatch = xml.match(/<UploadId>(.*?)<\/UploadId>/)
   return uploadIdMatch?.[1] || null
+}
+
+// Parse the ListMultipartUploads XML to extract an array of { key, uploadId }
+function parseUploadsList(xml: string): Array<{ key: string; uploadId: string }> {
+  const uploads: Array<{ key: string; uploadId: string }> = []
+  // Matches <Upload> ... <Key>...</Key> ... <UploadId>...</UploadId> ... </Upload>
+  const uploadRegex =
+    /<Upload>[\s\S]*?<Key>([\s\S]*?)<\/Key>[\s\S]*?<UploadId>([\s\S]*?)<\/UploadId>[\s\S]*?<\/Upload>/g
+  let match
+  // eslint-disable-next-line no-cond-assign
+  while ((match = uploadRegex.exec(xml))) {
+    const key = match[1]
+    const uploadId = match[2]
+    if (key && uploadId) uploads.push({ key, uploadId })
+  }
+  return uploads
 }
 
 // Helper function to get R2 URL

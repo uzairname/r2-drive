@@ -4,10 +4,17 @@ import { ItemUploadProgress } from '@r2-drive/utils/types/item'
 import { CheckCircle, Upload, XCircle } from 'lucide-react'
 import React, { useEffect } from 'react'
 
-export function UploadProgress({ uploads }: { uploads: ItemUploadProgress[] }) {
+export function UploadProgress({
+  uploads,
+  onCancel,
+}: {
+  uploads: ItemUploadProgress[]
+  onCancel: () => Promise<void>
+}) {
   const [isVisible, setIsVisible] = React.useState(true)
 
   useEffect(() => {
+    console.log('UploadProgress - uploads changed:', uploads)
     if (uploads.length > 0) {
       setIsVisible(true)
     }
@@ -46,10 +53,12 @@ export function UploadProgress({ uploads }: { uploads: ItemUploadProgress[] }) {
           </span>
         </div>
         <button
-          onClick={() => {
+          onClick={async () => {
             setIsVisible(false)
+            await onCancel()
           }}
           className="text-muted-foreground hover:text-foreground"
+          title="Close or cancel"
         >
           ×
         </button>

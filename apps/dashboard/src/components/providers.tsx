@@ -1,13 +1,13 @@
 'use client'
 
 import { trpc } from '@/trpc/client'
+import { Toaster } from '@r2-drive/ui/components/sonner'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { httpBatchLink } from '@trpc/client'
 import { Session } from 'next-auth'
 import { SessionProvider } from 'next-auth/react'
 import { ThemeProvider as NextThemesProvider } from 'next-themes'
 import { ReactNode, useState } from 'react'
-import { Toaster } from 'sonner'
 
 export function Providers({ children, session }: { children: ReactNode; session: Session | null }) {
   const [queryClient] = useState(() => new QueryClient())
@@ -34,7 +34,7 @@ export function Providers({ children, session }: { children: ReactNode; session:
             enableColorScheme
           >
             {children}
-            <Toaster />
+            <Toaster position="top-right" />
           </NextThemesProvider>
         </SessionProvider>
       </QueryClientProvider>

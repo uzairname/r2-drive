@@ -59,9 +59,9 @@ async function uploadSmallFile(
     isMultipart: false,
   })
 
-  const result = await putObject(key, file, { 
+  const result = await putObject(key, file, {
     contentType,
-    lastModified, 
+    lastModified,
   })
 
   if (result.success) {
@@ -105,13 +105,15 @@ async function uploadFileMultipart(path: Path, file: File): Promise<Result<void,
  * @param files - Array of File objects to upload
  * @param operations - Object containing prepare and complete functions for presigned uploads
  * @param onProgress - Optional callback to receive upload progress updates
+ * @param abortSignal - Optional abort signal to cancel uploads
  * @returns Result indicating success or failure with an error message
  */
 export async function uploadFilesSignedURL(
   folder: Path,
   files: File[],
   operations: PresignedUploadOperations,
-  onProgress?: (progress: ItemUploadProgress) => void
+  onProgress?: (progress: ItemUploadProgress) => void,
+  abortSignal?: AbortSignal
 ): Promise<Result> {
   return safeAsync(async () => {
     // Throw error if duplicate file keys are found
@@ -144,20 +146,10 @@ export async function uploadFilesSignedURL(
     const prepareOptions = {
       smallFiles: smallFiles.map((file) => ({
         key: Paths.filePath(folder, file).key,
-        metadata: {
-          contentType: file.type || 'application/octet-stream',
-          lastModified: file.lastModified,
-          dateCreated: file.lastModified, // Use lastModified as dateCreated fallback
-        },
       })),
       largeFiles: largeFiles.map((file) => ({
         key: Paths.filePath(folder, file).key,
         partCount: Math.ceil(file.size / chunkSize),
-        metadata: {
-          contentType: file.type || 'application/octet-stream',
-          lastModified: file.lastModified,
-          dateCreated: file.lastModified, // Use lastModified as dateCreated fallback
-        },
       })),
     }
 
@@ -177,17 +169,33 @@ export async function uploadFilesSignedURL(
         fetch(uploadInfo.url, {
           method: 'PUT',
           body: file,
-          headers: uploadInfo.headers || {},
-        }).then((res) => {
-          onProgress?.({
-            fileName: file.name,
-            uploadedBytes: file.size,
-            totalBytes: file.size,
-            success: res.ok,
-            isMultipart: false,
-            errorMsg: res.ok ? undefined : `Upload failed with status ${res.status}`,
-          })
+          signal: abortSignal,
         })
+          .then((res) => {
+            onProgress?.({
+              fileName: file.name,
+              uploadedBytes: file.size,
+              totalBytes: file.size,
+              success: res.ok,
+              isMultipart: false,
+              errorMsg: res.ok ? undefined : `Upload failed with status ${res.status}`,
+            })
+          })
+          .catch((error) => {
+            // Handle abort errors gracefully for single-part uploads
+            if (abortSignal?.aborted) {
+              onProgress?.({
+                fileName: file.name,
+                uploadedBytes: 0,
+                totalBytes: file.size,
+                success: false,
+                isMultipart: false,
+                errorMsg: 'Upload cancelled',
+              })
+            } else {
+              throw error // Re-throw non-abort errors
+            }
+          })
       )
     })
 
@@ -199,7 +207,20 @@ export async function uploadFilesSignedURL(
       uploadedBytes: 0,
     }))
 
-    const multipartPromises = largeFiles
+    const multipartPromises: Promise<
+      | {
+          aborted: true
+          key: string
+        }
+      | {
+          aborted: false
+          key: string
+          partNumber: number
+          uploadId: string
+          etag: string
+          fileSize: number
+        }
+    >[] = largeFiles
       .map((file) => {
         const fileUploadInfo = multiPartUploads.find(
           (u) => u.key === Paths.filePath(folder, file).key
@@ -208,14 +229,33 @@ export async function uploadFilesSignedURL(
 
         const partPromises = fileUploadInfo.partUrls.map((url: string, index: number) => {
           return limit(async () => {
+            // Check for cancellation before each part - return early instead of throwing
+            if (abortSignal?.aborted) {
+              onProgress?.({
+                fileName: file.name,
+                uploadedBytes: 0,
+                totalBytes: file.size,
+                success: false,
+                isMultipart: true,
+                errorMsg: 'Upload cancelled',
+              })
+              return {
+                aborted: true as true,
+                key: fileUploadInfo.key,
+              }
+            }
+
             const chunk = file.slice(
               index * chunkSize,
               Math.min((index + 1) * chunkSize, file.size)
             )
+
             const response = await fetch(url, {
               method: 'PUT',
               body: chunk,
+              signal: abortSignal, // Add abort signal to fetch
             })
+
             const etag = response.headers.get('ETag')?.replace(/"/g, '')
             if (!etag)
               throw new Error(`Missing ETag in response for part ${index + 1} of file ${file.name}`)
@@ -236,6 +276,7 @@ export async function uploadFilesSignedURL(
             }
 
             return {
+              aborted: false,
               key: fileUploadInfo.key,
               partNumber: index + 1,
               uploadId: fileUploadInfo.uploadId,
@@ -251,7 +292,7 @@ export async function uploadFilesSignedURL(
 
     const multipartCompletions = await Promise.all(multipartPromises)
 
-    if (multipartPromises.length > 0) {
+    if (multipartCompletions.length > 0) {
       // Group parts by uploadId
       const completionMap: Record<
         string,
@@ -263,6 +304,10 @@ export async function uploadFilesSignedURL(
         }
       > = {}
       for (const part of multipartCompletions) {
+        if (part.aborted) {
+          continue // Skip aborted uploads
+        }
+
         if (!completionMap[part.uploadId]) {
           completionMap[part.uploadId] = {
             key: part.key,
@@ -271,6 +316,7 @@ export async function uploadFilesSignedURL(
             fileSize: part.fileSize,
           }
         }
+
         completionMap[part.uploadId]!.parts.push({ partNumber: part.partNumber, etag: part.etag })
       }
 
