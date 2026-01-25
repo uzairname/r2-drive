@@ -3,7 +3,7 @@
 import { DownloadProgress } from '@/components/bucket-navigator/download-progress'
 import { UploadProgress } from '@/components/bucket-navigator/upload-progress'
 import { useFileOperations } from '@/hooks/file-operations'
-import { CanWrite, usePermissions } from '@/hooks/use-permissions'
+import { CanWriteInside, usePermissions } from '@/hooks/use-permissions'
 import { useBucketInfo } from '@/hooks/use-bucket-info'
 import { useDialogs } from '@/hooks/use-dialogs'
 import { useFileExplorer } from '@/hooks/use-file-explorer'
@@ -27,7 +27,7 @@ export function BucketNavigator() {
   const { bucketName } = useBucketInfo()
   const fileExplorer = useFileExplorer()
   const dialogs = useDialogs()
-  const { canWrite } = usePermissions()
+  const { canWriteInside } = usePermissions()
 
   // Current folder path for permission checks
   const currentPathKey = fileExplorer.path.key
@@ -76,7 +76,7 @@ export function BucketNavigator() {
         <DropZone
           onFileDrop={ops.upload.uploadFiles}
           className="border border-border rounded-lg bg-card overflow-hidden"
-          disabled={!canWrite(currentPathKey)}
+          disabled={!canWriteInside(currentPathKey)}
         >
           <R2FileTable
             items={fileExplorer.sortedItems}
@@ -98,13 +98,13 @@ export function BucketNavigator() {
         </DropZone>
 
         {/* File Action Btns */}
-        <CanWrite path={currentPathKey}>
+        <CanWriteInside path={currentPathKey}>
           <FileActionButtons
             onUploadFile={ops.upload.triggerFileUpload}
             onUploadFolder={ops.upload.triggerFolderUpload}
             onCreateFolder={dialogs.openCreateFolderDialog}
           />
-        </CanWrite>
+        </CanWriteInside>
 
         {/* Selection Info */}
         <R2SelectionInfo

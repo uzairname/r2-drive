@@ -74,6 +74,7 @@ interface PermissionsContextValue {
   isAdmin: boolean
   isLoading: boolean
   canWrite: (path: string) => boolean
+  canWriteInside: (path: string) => boolean
   canRead: (path: string) => boolean
 }
 
@@ -128,6 +129,18 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
     [isAdmin, tokens]
   )
 
+  const canWriteInside = useCallback(
+    (path: string) => {
+      if (isAdmin) return true
+      // Check if user can write to contents inside this path (for upload/create operations)
+      // This returns true even for the exact token path since the user can write inside it
+      return tokens.some(
+        (t) => t.permission === 'write' && tokenGrantsAccess(t.pathPrefix, path)
+      )
+    },
+    [isAdmin, tokens]
+  )
+
   const canRead = useCallback(
     (path: string) => {
       if (isAdmin) return true
@@ -141,9 +154,10 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
       isAdmin,
       isLoading,
       canWrite,
+      canWriteInside,
       canRead,
     }),
-    [isAdmin, isLoading, canWrite, canRead]
+    [isAdmin, isLoading, canWrite, canWriteInside, canRead]
   )
 
   return <PermissionsContext.Provider value={value}>{children}</PermissionsContext.Provider>
@@ -163,6 +177,7 @@ export function usePermissions(): PermissionsContextValue {
 /**
  * Component that renders children only if the user has write permission for the given path.
  * This includes admins and users with write share tokens that cover the path.
+ * Note: This returns false for the exact shared folder path to prevent deletion/rename.
  */
 export function CanWrite({
   path,
@@ -180,6 +195,30 @@ export function CanWrite({
   }
 
   return canWrite(path) ? <>{children}</> : <>{fallback}</>
+}
+
+/**
+ * Component that renders children only if the user can write inside the given path.
+ * This includes admins and users with write share tokens that cover the path.
+ * Unlike CanWrite, this returns true for the exact shared folder path since
+ * the user can create/upload content inside it.
+ */
+export function CanWriteInside({
+  path,
+  children,
+  fallback = null,
+}: {
+  path: string
+  children: React.ReactNode
+  fallback?: React.ReactNode
+}) {
+  const { canWriteInside, isLoading } = usePermissions()
+
+  if (isLoading) {
+    return null
+  }
+
+  return canWriteInside(path) ? <>{children}</> : <>{fallback}</>
 }
 
 /**
