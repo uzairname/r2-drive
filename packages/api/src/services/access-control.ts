@@ -24,15 +24,42 @@ function tokenGrantsAccess(token: ValidatedToken, path: string): boolean {
 }
 
 /**
+ * Normalize a path for comparison by removing trailing slashes
+ */
+function normalizePath(path: string): string {
+  return path.replace(/\/+$/, '')
+}
+
+/**
+ * Check if a path is the exact directory that a token grants access to
+ * (not a subdirectory or file within it)
+ */
+function isExactTokenPath(tokenPrefix: string, path: string): boolean {
+  // Root access tokens don't have a protected directory
+  if (tokenPrefix === '') return false
+
+  // Normalize both paths for comparison
+  const normalizedToken = normalizePath(tokenPrefix)
+  const normalizedPath = normalizePath(path)
+
+  return normalizedToken === normalizedPath
+}
+
+/**
  * Get the highest permission level for a path from a set of tokens
+ * Note: Write permission for a directory only applies to contents within it,
+ * not the directory itself (to prevent accidental deletion/rename of shared folders)
  */
 function getTokenPermission(tokens: ValidatedToken[], path: string): SharePermission | null {
   let highestPermission: SharePermission | null = null
 
   for (const token of tokens) {
     if (tokenGrantsAccess(token, path)) {
-      // 'write' is higher than 'read'
-      if (token.permission === 'write') {
+      // Check if this is the exact token path (the shared directory itself)
+      // If so, only grant read access even if the token has write permission
+      const isProtectedPath = isExactTokenPath(token.pathPrefix, path)
+
+      if (token.permission === 'write' && !isProtectedPath) {
         return 'write' // Can't get higher, return immediately
       }
       if (highestPermission === null) {

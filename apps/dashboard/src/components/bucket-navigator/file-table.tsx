@@ -100,7 +100,7 @@ export function R2FileTable({
           <div className="space-y-2">
             <h3 className="text-lg font-medium text-foreground">This directory is empty</h3>
             <p className="text-sm text-muted-foreground">
-              Upload files or create folders to get started
+              Upload files or create folders by dragging and dropping them here.
             </p>
           </div>
         </div>

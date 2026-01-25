@@ -10,6 +10,7 @@ import { Paths } from '@/lib/path'
 import { Path } from '@/lib/path'
 import { useState } from 'react'
 import { R2Breadcrumbs } from './bucket-navigator/breadcrumbs'
+import { CompressionDialog } from './bucket-navigator/compression-dialog'
 import { CopyLinkButton } from './bucket-navigator/copy-link-button'
 import { CreateFolderDialog } from './bucket-navigator/create-folder-dialog'
 import { DeleteConfirmationDialog } from './bucket-navigator/delete-confirmation-dialog'
@@ -154,6 +155,18 @@ export function BucketNavigator() {
         files={ops.upload.overwriteFiles}
         onConfirm={ops.upload.confirmOverwrite}
         onCancel={ops.upload.closeOverwriteConfirmDialog}
+      />
+
+      {/* Compression Dialog */}
+      <CompressionDialog
+        open={ops.upload.showCompressionDialog}
+        onOpenChange={ops.upload.setShowCompressionDialog}
+        files={ops.upload.compressionFiles}
+        shouldCompress={ops.upload.shouldCompress}
+        onShouldCompressChange={ops.upload.setShouldCompress}
+        onConfirm={ops.upload.confirmCompression}
+        onCancel={ops.upload.closeCompressionDialog}
+        isCompressing={ops.upload.isCompressing}
       />
 
       {/* Delete Confirmation Dialog */}

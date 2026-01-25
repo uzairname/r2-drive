@@ -1,4 +1,4 @@
-import { createDb, desc, eq, SharePermission, shareTokens } from '@r2-drive/db'
+import { createDb, desc, eq, SharePermission, shareTokens, and, or, isNull, gt } from '@r2-drive/db'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 import { adminProcedure, publicProcedure, router } from '../../trpc'
@@ -121,4 +121,33 @@ export const sharingRouter = router({
       })),
     }
   }),
+
+  // Get the path prefix for a specific token (public, used for redirect after sharing)
+  getTokenPath: publicProcedure
+    .input(z.object({ tokenId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      if (!ctx.env.DATABASE_URL) {
+        return { pathPrefix: null }
+      }
+
+      const db = createDb(ctx.env.DATABASE_URL)
+      const now = new Date()
+
+      const result = await db
+        .select({ pathPrefix: shareTokens.pathPrefix })
+        .from(shareTokens)
+        .where(
+          and(
+            eq(shareTokens.id, input.tokenId),
+            or(isNull(shareTokens.expiresAt), gt(shareTokens.expiresAt, now))
+          )
+        )
+        .limit(1)
+
+      if (result.length === 0 || !result[0]) {
+        return { pathPrefix: null }
+      }
+
+      return { pathPrefix: result[0].pathPrefix }
+    }),
 })

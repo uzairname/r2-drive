@@ -11,5 +11,11 @@ export const R2_CONFIG = {
   BATCH_DELETE_SIZE: 1000, // R2 limit for bulk delete operations
 } as const
 
+// Compression configuration - show dialog when exceeding these thresholds
+export const COMPRESSION_CONFIG = {
+  FILE_COUNT_THRESHOLD: 20, // Show compression dialog for more than 20 files
+  SIZE_THRESHOLD: 100 * 1024 * 1024, // Show compression dialog for more than 100 MB total size
+} as const
+
 export const isDev = (process.env.NODE_ENV as string) === 'development'
 export const USE_PRESIGNED_UPLOADS = !isDev

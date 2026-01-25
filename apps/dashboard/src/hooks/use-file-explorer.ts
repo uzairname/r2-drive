@@ -2,9 +2,24 @@ import { Path, Paths } from '@/lib/path'
 import { trpc } from '@/trpc/client'
 import { Result } from '@r2-drive/utils/result'
 import { UIR2Item } from '@r2-drive/utils/types/item'
-import { useSearchParams } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
+
+const PENDING_REDIRECT_COOKIE = 'r2-pending-redirect-token'
+
+function getCookie(name: string): string | undefined {
+  if (typeof document === 'undefined') return undefined
+  const value = `; ${document.cookie}`
+  const parts = value.split(`; ${name}=`)
+  if (parts.length === 2) return parts.pop()?.split(';').shift()
+  return undefined
+}
+
+function clearCookie(name: string): void {
+  if (typeof document === 'undefined') return
+  document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`
+}
 
 type SortKey = 'name' | 'size' | 'lastModified'
 type SortDirection = 'asc' | 'desc'
@@ -37,6 +52,8 @@ export function useFileExplorer(): FileExplorerState & FileExplorerActions {
   const [selectedItems, setSelectedItems] = useState<string[]>([])
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null)
   const searchParams = useSearchParams()
+  const router = useRouter()
+  const hasHandledRedirectRef = useRef(false)
 
   // Use tRPC list endpoint to fetch items for current path
   const {
@@ -44,6 +61,42 @@ export function useFileExplorer(): FileExplorerState & FileExplorerActions {
     isLoading,
     refetch: refetchItems,
   } = trpc.r2.list.useQuery({ folder: path })
+
+  // Check for pending redirect token
+  const [pendingTokenId, setPendingTokenId] = useState<string | null>(() => {
+    if (typeof document === 'undefined') return null
+    return getCookie(PENDING_REDIRECT_COOKIE) ?? null
+  })
+
+  // Use tRPC to get the path for the pending redirect token
+  const { data: tokenPathData } = trpc.sharing.getTokenPath.useQuery(
+    { tokenId: pendingTokenId ?? '' },
+    {
+      enabled: !!pendingTokenId && !hasHandledRedirectRef.current,
+    }
+  )
+
+  // Handle redirect to shared directory when a new token is used
+  useEffect(() => {
+    if (hasHandledRedirectRef.current) return
+    if (!pendingTokenId) return
+    if (!tokenPathData) return
+
+    hasHandledRedirectRef.current = true
+    clearCookie(PENDING_REDIRECT_COOKIE)
+    setPendingTokenId(null)
+
+    const pathPrefix = tokenPathData.pathPrefix
+    if (pathPrefix === null) return // Token not found or expired
+
+    // Navigate to the token's path (empty string means root, no redirect needed)
+    if (pathPrefix !== '') {
+      const targetPath = Paths.fromR2Key(pathPrefix)
+      const searchParams = Paths.toURLSearchParams(targetPath)
+      const queryString = searchParams.toString()
+      router.push(`/explorer${queryString ? `?${queryString}` : ''}`)
+    }
+  }, [tokenPathData, pendingTokenId, router])
 
   // Extract items from the result and combine files and folders
   const items: UIR2Item[] = useMemo(() => {

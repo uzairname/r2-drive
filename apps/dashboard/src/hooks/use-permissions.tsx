@@ -45,12 +45,35 @@ async function registerTokenAccess(tokenId: string) {
 }
 
 /**
+ * Normalize a path for comparison by removing trailing slashes
+ */
+function normalizePath(path: string): string {
+  return path.replace(/\/+$/, '')
+}
+
+/**
  * Check if a token's path prefix grants access to a given path.
  * Mirrors the backend logic from access-control.ts
  */
 function tokenGrantsAccess(tokenPrefix: string, path: string): boolean {
   if (tokenPrefix === '') return true // Root access
   return path.startsWith(tokenPrefix)
+}
+
+/**
+ * Check if a path is the exact directory that a token grants access to
+ * (not a subdirectory or file within it)
+ * Mirrors the backend logic from access-control.ts
+ */
+function isExactTokenPath(tokenPrefix: string, path: string): boolean {
+  // Root access tokens don't have a protected directory
+  if (tokenPrefix === '') return false
+
+  // Normalize both paths for comparison
+  const normalizedToken = normalizePath(tokenPrefix)
+  const normalizedPath = normalizePath(path)
+
+  return normalizedToken === normalizedPath
 }
 
 interface PermissionsContextValue {
@@ -99,7 +122,14 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
   const canWrite = useCallback(
     (path: string) => {
       if (isAdmin) return true
-      return tokens.some((t) => t.permission === 'write' && tokenGrantsAccess(t.pathPrefix, path))
+      // Write permission for a directory only applies to contents within it,
+      // not the directory itself (to prevent accidental deletion/rename of shared folders)
+      return tokens.some(
+        (t) =>
+          t.permission === 'write' &&
+          tokenGrantsAccess(t.pathPrefix, path) &&
+          !isExactTokenPath(t.pathPrefix, path)
+      )
     },
     [isAdmin, tokens]
   )

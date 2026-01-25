@@ -1,8 +1,9 @@
+import { compressFiles } from '@/lib/compress'
 import { Path, Paths } from '@/lib/path'
 import { uploadFilesSignedURL, uploadFilesViaBinding } from '@/lib/upload'
 import { trpc } from '@/trpc/client'
 import { PresignedUploadOperations } from '@r2-drive/api/routers/r2/upload'
-import { USE_PRESIGNED_UPLOADS } from '@r2-drive/utils/app-config'
+import { COMPRESSION_CONFIG, USE_PRESIGNED_UPLOADS } from '@r2-drive/utils/app-config'
 import { ItemUploadProgress } from '@r2-drive/utils/types/item'
 import { useCallback, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -12,9 +13,14 @@ export interface UseFileUploadState {
   fileInputRef: React.RefObject<HTMLInputElement | null>
   folderInputRef: React.RefObject<HTMLInputElement | null>
   isUploading: boolean
+  isCompressing: boolean
 
   showOverwriteConfirmDialog: boolean
   overwriteFiles: File[]
+
+  showCompressionDialog: boolean
+  compressionFiles: File[]
+  shouldCompress: boolean
 }
 
 export interface UseFileUploadActions {
@@ -26,6 +32,10 @@ export interface UseFileUploadActions {
   triggerFolderUpload: () => void
   closeOverwriteConfirmDialog: () => void
   setShowOverwriteConfirmDialog: (show: boolean) => void
+  confirmCompression: () => Promise<void>
+  closeCompressionDialog: () => void
+  setShowCompressionDialog: (show: boolean) => void
+  setShouldCompress: (compress: boolean) => void
 }
 
 export interface UseFileUploadProps {
@@ -52,6 +62,12 @@ export function useFileUpload({
   const pendingFilesRef = useRef<File[]>([])
   const [showOverwriteConfirmDialog, setShowOverwriteConfirmDialog] = useState(false)
   const [overwriteFiles, setOverwriteFiles] = useState<File[]>([])
+
+  // Compression dialog
+  const [showCompressionDialog, setShowCompressionDialog] = useState(false)
+  const [compressionFiles, setCompressionFiles] = useState<File[]>([])
+  const [shouldCompress, setShouldCompress] = useState(true) // Default checked
+  const [isCompressing, setIsCompressing] = useState(false)
 
   // tRPC mutations
   const prepareUpload = trpc.r2.upload.prepare.useMutation()
@@ -127,11 +143,54 @@ export function useFileUpload({
     [path, operations, handleProgressUpdate, onFilesChange]
   )
 
+  // Check if files exceed compression thresholds
+  const shouldShowCompressionDialog = useCallback((files: File[]) => {
+    if (files.length <= 1) return false
+    const totalSize = files.reduce((sum, file) => sum + file.size, 0)
+    return (
+      files.length > COMPRESSION_CONFIG.FILE_COUNT_THRESHOLD ||
+      totalSize > COMPRESSION_CONFIG.SIZE_THRESHOLD
+    )
+  }, [])
+
+  // Proceed with upload after all dialogs are handled
+  const proceedWithUpload = useCallback(
+    async (files: File[], compress: boolean) => {
+      if (compress) {
+        try {
+          setIsCompressing(true)
+          const zipFile = await compressFiles(files)
+          setIsCompressing(false)
+          setIsUploading(true)
+          await doUpload([zipFile])
+        } catch (error) {
+          setIsCompressing(false)
+          toast.error('Failed to compress files', {
+            description: error instanceof Error ? error.message : String(error),
+          })
+        }
+      } else {
+        setIsUploading(true)
+        await doUpload(files)
+      }
+    },
+    [doUpload]
+  )
+
   // When the user attempts to upload files
   const onUploadFiles = useCallback(
     async (files: File[]) => {
       console.log(`Uploading ${files.length} files to ${path.key}. Files: `, files)
-      
+
+      // Check if compression dialog should be shown first
+      if (shouldShowCompressionDialog(files)) {
+        pendingFilesRef.current = files
+        setCompressionFiles(files)
+        setShouldCompress(true) // Reset to default checked
+        setShowCompressionDialog(true)
+        return
+      }
+
       // Check for existing files
       const existingFiles = files.filter(
         (file) =>
@@ -151,18 +210,53 @@ export function useFileUpload({
       // Don't reset progress - append to existing progress for concurrent uploads
       await doUpload(files)
     },
-    [path, currentFiles, doUpload, setOverwriteFiles, setShowOverwriteConfirmDialog]
+    [path, currentFiles, doUpload, shouldShowCompressionDialog]
   )
 
   const confirmOverwrite = useCallback(async () => {
     const files = pendingFilesRef.current
     if (files.length === 0) return
 
-    setIsUploading(true)
     // Don't reset progress - append to existing progress for concurrent uploads
-    await doUpload(files)
+    await proceedWithUpload(files, false)
     pendingFilesRef.current = []
-  }, [doUpload])
+  }, [proceedWithUpload])
+
+  // When user confirms from compression dialog
+  const confirmCompression = useCallback(async () => {
+    const files = pendingFilesRef.current
+    if (files.length === 0) return
+
+    // After compression dialog, check for file conflicts
+    // Note: if compressing, we need to check if the zip filename conflicts
+    if (shouldCompress) {
+      // When compressing, keep dialog open to show progress, then close after
+      await proceedWithUpload(files, true)
+      setShowCompressionDialog(false)
+      setCompressionFiles([])
+    } else {
+      // Not compressing - close dialog immediately
+      setShowCompressionDialog(false)
+      setCompressionFiles([])
+
+      // When not compressing, check for existing files
+      const existingFiles = files.filter(
+        (file) =>
+          currentFiles.includes(file.name) || currentFiles.includes(Paths.filePath(path, file).name)
+      )
+
+      if (existingFiles.length > 0) {
+        // Store files and show overwrite confirmation dialog
+        setOverwriteFiles(files)
+        setShowOverwriteConfirmDialog(true)
+        return
+      }
+
+      // No conflicts, proceed with upload
+      await proceedWithUpload(files, false)
+    }
+    pendingFilesRef.current = []
+  }, [shouldCompress, currentFiles, path, proceedWithUpload])
 
   // Handle file or folder upload from input
   const uploadFromHTMLInput = useCallback(
@@ -215,6 +309,13 @@ export function useFileUpload({
   const closeOverwriteConfirmDialog = () => {
     setShowOverwriteConfirmDialog(false)
     setOverwriteFiles([])
+    pendingFilesRef.current = []
+  }
+
+  const closeCompressionDialog = () => {
+    setShowCompressionDialog(false)
+    setCompressionFiles([])
+    pendingFilesRef.current = []
   }
 
   return {
@@ -223,8 +324,12 @@ export function useFileUpload({
     fileInputRef,
     folderInputRef,
     isUploading,
+    isCompressing,
     showOverwriteConfirmDialog,
     overwriteFiles,
+    showCompressionDialog,
+    compressionFiles,
+    shouldCompress,
     // Actions
     uploadFromHTMLInput,
     uploadFiles: onUploadFiles,
@@ -234,5 +339,9 @@ export function useFileUpload({
     triggerFolderUpload,
     closeOverwriteConfirmDialog,
     setShowOverwriteConfirmDialog,
+    confirmCompression,
+    closeCompressionDialog,
+    setShowCompressionDialog,
+    setShouldCompress,
   }
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const TOKEN_PARAM = 'token'
 const TOKEN_COOKIE = 'r2-share-tokens'
+const PENDING_REDIRECT_COOKIE = 'r2-pending-redirect-token'
 
 export function middleware(request: NextRequest) {
   const url = request.nextUrl.clone()
@@ -31,6 +32,15 @@ export function middleware(request: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 365, // 1 year
+    })
+
+    // Set a pending redirect cookie so the frontend knows to redirect to this token's path
+    response.cookies.set(PENDING_REDIRECT_COOKIE, tokenParam, {
+      path: '/',
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60, // Short-lived, only needed for the initial redirect
     })
 
     return response
