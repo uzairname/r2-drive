@@ -1,8 +1,9 @@
-import { inferProcedureInput } from '@trpc/server'
+import { inferProcedureInput, TRPCError } from '@trpc/server'
 import { AwsClient } from 'aws4fetch'
 import { createHash } from 'crypto'
 import { z } from 'zod'
-import { adminProcedure } from '../../trpc'
+import { checkAccess } from '../../services/access-control'
+import { publicProcedure } from '../../trpc'
 
 type PrepareUploadInput = inferProcedureInput<typeof uploadRouter.prepare>
 type PrepareUploadOutput = Awaited<ReturnType<typeof uploadRouter.prepare>>
@@ -22,7 +23,7 @@ const MetadataSchema = z.object({
 
 export const uploadRouter = {
   // Prepare upload - generates presigned URLs for single part and multipart uploads
-  prepare: adminProcedure
+  prepare: publicProcedure
     .input(
       z.object({
         smallFiles: z.array(
@@ -43,6 +44,22 @@ export const uploadRouter = {
     .mutation(async ({ ctx, input }) => {
       try {
         const { env } = ctx
+
+        // Check write permission for all files
+        const allKeys = [
+          ...input.smallFiles.map((f) => f.key),
+          ...input.largeFiles.map((f) => f.key),
+        ]
+
+        for (const key of allKeys) {
+          const access = checkAccess(ctx, key, 'write')
+          if (!access.hasAccess) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: `No write access to ${key}`,
+            })
+          }
+        }
 
         const r2 = new AwsClient({
           accessKeyId: env.R2_ACCESS_KEY_ID,
@@ -106,7 +123,7 @@ export const uploadRouter = {
     }),
 
   // Complete multipart upload
-  complete: adminProcedure
+  complete: publicProcedure
     .input(
       z.object({
         key: z.string(),
@@ -171,7 +188,7 @@ export const uploadRouter = {
     }),
 
   // Cancel (abort) a single multipart upload
-  cancel: adminProcedure
+  cancel: publicProcedure
     .input(
       z.object({
         key: z.string(),
@@ -212,8 +229,8 @@ export const uploadRouter = {
       }
     }),
 
-  // Cancel (abort) all multipart uploads optionally filtered by prefix
-  cancelAll: adminProcedure
+  // Cancel (abort) all multipart uploads optionally filtered by prefix (admin only)
+  cancelAll: publicProcedure
     .input(
       z.object({
         prefix: z.string().optional(),

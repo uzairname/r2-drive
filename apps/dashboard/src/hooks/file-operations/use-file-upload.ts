@@ -44,8 +44,9 @@ export function useFileUpload({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)
 
-  // Upload Abort
-  const abortControllerRef = useRef<AbortController | null>(null)
+  // Upload Abort - Track multiple controllers for concurrent uploads
+  const abortControllersRef = useRef<Set<AbortController>>(new Set())
+  const activeUploadsRef = useRef<number>(0)
 
   // File overwrite
   const pendingFilesRef = useRef<File[]>([])
@@ -81,12 +82,13 @@ export function useFileUpload({
     async (files: File[]) => {
       // Create new AbortController for this upload session
       const abortController = new AbortController()
-      abortControllerRef.current = abortController
+      abortControllersRef.current.add(abortController)
+      activeUploadsRef.current += 1
 
       try {
         // Determine upload method based on environment
         if (USE_PRESIGNED_UPLOADS) {
-          result = await uploadFilesSignedURL(
+          var result = await uploadFilesSignedURL(
             path,
             files,
             operations,
@@ -95,7 +97,7 @@ export function useFileUpload({
           )
         } else {
           toast.warning('Using binding to upload. Only for development. Wont work for large files.')
-          var result = await uploadFilesViaBinding(path, files, handleProgressUpdate)
+          result = await uploadFilesViaBinding(path, files, handleProgressUpdate)
         }
 
         if (!result.success) {
@@ -107,13 +109,19 @@ export function useFileUpload({
         }
       } catch (error) {
         if (abortController.signal.aborted) {
-          toast.info('Upload cancelled')
+          console.log('Upload cancelled')
         } else {
           throw error
         }
       } finally {
-        setIsUploading(false)
-        abortControllerRef.current = null
+        // Clean up this upload session
+        abortControllersRef.current.delete(abortController)
+        activeUploadsRef.current -= 1
+        
+        // Only set isUploading to false when all uploads are done
+        if (activeUploadsRef.current === 0) {
+          setIsUploading(false)
+        }
       }
     },
     [path, operations, handleProgressUpdate, onFilesChange]
@@ -122,8 +130,8 @@ export function useFileUpload({
   // When the user attempts to upload files
   const onUploadFiles = useCallback(
     async (files: File[]) => {
-      if (isUploading) return
-
+      console.log(`Uploading ${files.length} files to ${path.key}. Files: `, files)
+      
       // Check for existing files
       const existingFiles = files.filter(
         (file) =>
@@ -140,10 +148,10 @@ export function useFileUpload({
 
       // No conflicts, proceed with upload
       setIsUploading(true)
-      setUploadProgress([]) // Reset progress for new upload session
+      // Don't reset progress - append to existing progress for concurrent uploads
       await doUpload(files)
     },
-    [path, currentFiles, isUploading, doUpload, setOverwriteFiles, setShowOverwriteConfirmDialog]
+    [path, currentFiles, doUpload, setOverwriteFiles, setShowOverwriteConfirmDialog]
   )
 
   const confirmOverwrite = useCallback(async () => {
@@ -151,7 +159,7 @@ export function useFileUpload({
     if (files.length === 0) return
 
     setIsUploading(true)
-    setUploadProgress([]) // Reset progress for new upload session
+    // Don't reset progress - append to existing progress for concurrent uploads
     await doUpload(files)
     pendingFilesRef.current = []
   }, [doUpload])
@@ -170,18 +178,23 @@ export function useFileUpload({
 
   const cancelAllUploads = useCallback(async () => {
     try {
-      // Abort local uploads
-      if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
-        abortControllerRef.current.abort('Canceled')
-      }
+      // Abort all ongoing local uploads
+      abortControllersRef.current.forEach((controller) => {
+        if (!controller.signal.aborted) {
+          controller.abort('Canceled')
+        }
+      })
+      abortControllersRef.current.clear()
 
       // Cancel all multipart uploads on the server
       const result = await cancelAll.mutateAsync({})
       if (result.success) {
-        toast.info(`Cancelled ${result.aborted} out of ${result.total} uploads`)
+        console.log(`Cancelled ${result.aborted} out of ${result.total} uploads`)
 
         // Update progress to show cancelled state
         setUploadProgress([])
+        setIsUploading(false)
+        activeUploadsRef.current = 0
       }
     } catch (error) {
       console.error('Error cancelling uploads:', error)
@@ -190,16 +203,14 @@ export function useFileUpload({
   }, [cancelAll])
 
   const triggerFileUpload = useCallback(() => {
-    if (!isUploading) {
-      fileInputRef.current?.click()
-    }
-  }, [isUploading])
+    // Allow triggering uploads even when another upload is in progress
+    fileInputRef.current?.click()
+  }, [])
 
   const triggerFolderUpload = useCallback(() => {
-    if (!isUploading) {
-      folderInputRef.current?.click()
-    }
-  }, [isUploading])
+    // Allow triggering uploads even when another upload is in progress
+    folderInputRef.current?.click()
+  }, [])
 
   const closeOverwriteConfirmDialog = () => {
     setShowOverwriteConfirmDialog(false)

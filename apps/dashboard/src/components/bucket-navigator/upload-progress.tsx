@@ -44,11 +44,11 @@ export function UploadProgress({
   const totalBytes = uploads.reduce((sum, upload) => sum + (upload.totalBytes || 0), 0)
 
   return (
-    <div className="fixed bottom-4 right-4 w-80 bg-card border border-border rounded-lg shadow-lg p-4 z-50">
-      <div className="flex items-center justify-between mb-3">
+    <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-100 sm:max-w-[calc(100vw-2rem)] bg-card border border-border rounded-lg shadow-lg p-5 z-50">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Upload className="h-4 w-4" />
-          <span className="font-medium text-sm">
+          <Upload className="h-5 w-5" />
+          <span className="font-medium text-base">
             Uploading {uploads.length} file{uploads.length !== 1 ? 's' : ''}
           </span>
         </div>
@@ -57,7 +57,7 @@ export function UploadProgress({
             setIsVisible(false)
             await onCancel()
           }}
-          className="text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground text-xl"
           title="Close or cancel"
         >
           ×
@@ -65,8 +65,8 @@ export function UploadProgress({
       </div>
 
       {/* Overall Progress */}
-      <div className="mb-3">
-        <div className="flex justify-between text-xs text-muted-foreground mb-1">
+      <div className="mb-4">
+        <div className="flex justify-between text-sm text-muted-foreground mb-2">
           <span>Overall Progress</span>
           <span>
             {totalBytes > 0
@@ -74,11 +74,11 @@ export function UploadProgress({
               : `${overallProgress}%`}
           </span>
         </div>
-        <Progress value={overallProgress} className="h-2" />
+        <Progress value={overallProgress} className="h-2.5" />
       </div>
 
       {/* Individual File Progress */}
-      <div className="max-h-32 overflow-y-auto space-y-2">
+      <div className="max-h-40 overflow-y-auto space-y-2.5">
         {uploads
           .sort((a, b) => {
             // Put in progress uploads first, then completed, then failed
@@ -91,19 +91,19 @@ export function UploadProgress({
           })
 
           .map((upload, index) => (
-            <div key={`${upload.fileName}-${index}`} className="text-xs">
-              <div className="flex items-center gap-2 mb-1">
+            <div key={`${upload.fileName}-${index}`} className="text-sm">
+              <div className="flex items-center gap-2 mb-1.5">
                 {upload.errorMsg ? (
-                  <XCircle className="h-3 w-3 text-destructive flex-shrink-0" />
+                  <XCircle className="h-4 w-4 text-destructive flex-shrink-0" />
                 ) : upload.success ? (
-                  <CheckCircle className="h-3 w-3 text-green-500 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
                 ) : (
-                  <div className="h-3 w-3 border border-muted-foreground rounded-full animate-spin flex-shrink-0" />
+                  <div className="h-4 w-4 border-2 border-muted-foreground rounded-full animate-spin flex-shrink-0" />
                 )}
                 <span className="truncate flex-1" title={upload.fileName}>
                   {upload.fileName}
                 </span>
-                <span className="text-muted-foreground">
+                <span className="text-muted-foreground text-xs">
                   {upload.errorMsg
                     ? 'Failed'
                     : upload.uploadedBytes && upload.totalBytes
@@ -118,11 +118,11 @@ export function UploadProgress({
                       ? Math.round(((upload.uploadedBytes || 0) / upload.totalBytes) * 100)
                       : undefined
                   }
-                  className="h-1"
+                  className="h-1.5"
                 />
               )}
               {upload.errorMsg && (
-                <div className="text-destructive text-xs mt-1 truncate" title={upload.errorMsg}>
+                <div className="text-destructive text-sm mt-1 truncate" title={upload.errorMsg}>
                   {upload.errorMsg}
                 </div>
               )}
@@ -132,7 +132,7 @@ export function UploadProgress({
 
       {/* Summary */}
       {(completedUploads.length > 0 || failedUploads.length > 0) && (
-        <div className="mt-3 pt-2 border-t border-border text-xs text-muted-foreground">
+        <div className="mt-4 pt-3 border-t border-border text-sm text-muted-foreground">
           {completedUploads.length > 0 && <div>✓ {completedUploads.length} completed</div>}
           {failedUploads.length > 0 && (
             <div className="text-destructive">✗ {failedUploads.length} failed</div>

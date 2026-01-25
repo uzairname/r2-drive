@@ -1,17 +1,77 @@
+import { createDb, SharePermission, shareTokens } from '@r2-drive/db'
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { initTRPC, TRPCError } from '@trpc/server'
+import { and, eq, gt, isNull, or } from 'drizzle-orm'
 import { Session } from 'next-auth'
 import { isUserAdmin } from './auth'
 
-export async function createContext({ session }: { session: Session | null }) {
+export interface ValidatedToken {
+  pathPrefix: string
+  permission: SharePermission
+}
+
+export async function createContext({
+  session,
+  shareTokensHeader,
+}: {
+  session: Session | null
+  shareTokensHeader?: string
+}) {
   const { env } = getCloudflareContext()
   const isAdmin = isUserAdmin(session, env)
+
+  // Parse and validate share tokens
+  let validatedTokens: ValidatedToken[] = []
+
+  if (shareTokensHeader && env.DATABASE_URL) {
+    validatedTokens = await validateTokens(env.DATABASE_URL, shareTokensHeader)
+  }
 
   return {
     session,
     env,
     isAdmin,
+    shareTokens: validatedTokens,
   }
+}
+
+async function validateTokens(databaseUrl: string, tokenHeader: string): Promise<ValidatedToken[]> {
+  const tokenIds = tokenHeader.split(',').map((t) => t.trim()).filter(Boolean)
+
+  if (tokenIds.length === 0) {
+    return []
+  }
+
+  const db = createDb(databaseUrl)
+  const now = new Date()
+
+  // Fetch all tokens and validate in one query
+  const validTokens: ValidatedToken[] = []
+
+  for (const tokenId of tokenIds) {
+    const result = await db
+      .select({
+        pathPrefix: shareTokens.pathPrefix,
+        permission: shareTokens.permission,
+      })
+      .from(shareTokens)
+      .where(
+        and(
+          eq(shareTokens.id, tokenId),
+          or(isNull(shareTokens.expiresAt), gt(shareTokens.expiresAt, now))
+        )
+      )
+      .limit(1)
+
+    if (result.length > 0 && result[0]) {
+      validTokens.push({
+        pathPrefix: result[0].pathPrefix,
+        permission: result[0].permission as SharePermission,
+      })
+    }
+  }
+
+  return validTokens
 }
 
 export type Context = Awaited<ReturnType<typeof createContext>>

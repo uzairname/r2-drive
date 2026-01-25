@@ -1,0 +1,12 @@
+{
+  "extends": "@r2-drive/ts-config/base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@r2-drive/db/*": ["./src/*"]
+    },
+    "types": ["@r2-drive/config/dist/cloudflare-env.d.ts"]
+  },
+  "include": ["."],
+  "exclude": ["node_modules", "dist"]
+}

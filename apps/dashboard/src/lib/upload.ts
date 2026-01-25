@@ -16,12 +16,13 @@ export async function uploadFilesViaBinding(
   files: File[],
   onProgress?: (progress: ItemUploadProgress) => void
 ): Promise<Result> {
-  return safeAsync(async () => {
+  return await safeAsync(async () => {
     // Separate files by upload method
     const regularFiles = files.filter((file) => file.size <= UPLOAD_CONFIG.MULTIPART_CHUNK_SIZE)
     const multipartFiles = files.filter((file) => file.size > UPLOAD_CONFIG.MULTIPART_CHUNK_SIZE)
 
     if (multipartFiles.length > 0) {
+      // Not implemented
       await uploadFilesMultipart(path, multipartFiles)
     }
 
@@ -83,13 +84,12 @@ async function uploadSmallFile(
       errorMsg,
     })
   }
-
   return result
 }
 
 export async function uploadFilesMultipart(path: Path, files: File[]) {
   for (const file of files) {
-    const result = uploadFileMultipart(Paths.filePath(path, file), file)
+    const result = await uploadFileMultipart(Paths.filePath(path, file), file)
   }
 }
 
@@ -193,6 +193,7 @@ export async function uploadFilesSignedURL(
                 errorMsg: 'Upload cancelled',
               })
             } else {
+              console.error('Error uploading small file:', error)
               throw error // Re-throw non-abort errors
             }
           })

@@ -1,5 +1,5 @@
 {
-  "extends": "@r2-drive/ts-config/r2-drive.json",
+  "extends": "@r2-drive/ts-config/base.json",
   "compilerOptions": {
     "plugins": [
       {
@@ -7,7 +7,8 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@r2-drive/ui/*": ["../../packages/ui/src/*"] // for `shadcn@@latest add` to work
     },
     "types": ["node"],
     "allowJs": true,

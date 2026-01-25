@@ -1,7 +1,10 @@
 import { z } from 'zod'
 
 export const PathSchema = z.object({
-  parts: z.array(z.string()),
+  parts: z.array(z.string()
+    .refine((p) => p.length > 0, { message: 'Path segments cannot be empty' })
+    .refine((p) => !/[/]/g.test(p), { message: 'Path segments contain invalid characters' })
+  ),
   key: z.string(),
   name: z.string(),
   isFolder: z.boolean(),
@@ -24,15 +27,15 @@ function getKey(parts: string[], isFolder: boolean): string {
 }
 
 function createPath(parts: string[], isFolder: boolean): Path {
-  return {
+  return PathSchema.parse({
     parts,
     isFolder,
     key: getKey(parts, isFolder),
     name: getName(parts),
-  }
+  })
 }
 
-export namespace Paths {
+export namespace PathUtils {
   export function getRoot(): Path {
     return createPath([], true)
   }
@@ -88,5 +91,13 @@ export namespace Paths {
   export function fromR2Key(key: string): Path {
     const segments = key.split('/').filter(Boolean)
     return createPath(segments, key.endsWith('/') || segments.length === 0)
+  }
+
+  export function rename(path: Path, newName: string): Path {
+    if (path.parts.length === 0) {
+      throw new Error('Cannot rename the root path')
+    }
+    const newParts = [...path.parts.slice(0, -1), newName]
+    return createPath(newParts, path.isFolder)
   }
 }

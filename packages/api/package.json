@@ -2,13 +2,18 @@
   "name": "@r2-drive/api",
   "type": "module",
   "packageManager": "pnpm@10.17.0",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "@opennextjs/cloudflare": "^1.8.2",
+    "@r2-drive/db": "workspace:*",
+    "@r2-drive/utils": "workspace:*",
     "@trpc/server": "^11.5.1",
     "aws4fetch": "^1.0.20",
+    "drizzle-orm": "^0.38.0",
     "next-auth": "5.0.0-beta.29",
-    "zod": "^4.0.0",
-    "@r2-drive/utils": "workspace:*"
+    "zod": "^4.0.0"
   },
   "devDependencies": {
     "@r2-drive/config": "workspace:*",

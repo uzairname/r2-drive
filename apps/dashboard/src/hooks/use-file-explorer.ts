@@ -10,7 +10,6 @@ type SortKey = 'name' | 'size' | 'lastModified'
 type SortDirection = 'asc' | 'desc'
 
 export interface FileExplorerState {
-  bucketName: string | undefined
   path: Path
   items: UIR2Item[]
   sortKey: SortKey
@@ -23,7 +22,7 @@ export interface FileExplorerState {
 export interface FileExplorerActions {
   onSort: (key: SortKey) => void
   setPath: (folder: Path) => void
-  onItemSelect: (itemId: string) => void
+  onItemSelect: (itemId: string, shiftKey?: boolean) => void
   onSelectAll: () => void
   onCreateFolder: (folderName: string) => Promise<Result>
   refreshItems: (folder: Path) => Promise<void>
@@ -36,6 +35,7 @@ export function useFileExplorer(): FileExplorerState & FileExplorerActions {
   const [sortKey, setSortKey] = useState<SortKey>('name')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const [selectedItems, setSelectedItems] = useState<string[]>([])
+  const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null)
   const searchParams = useSearchParams()
 
   // Use tRPC list endpoint to fetch items for current path
@@ -57,12 +57,21 @@ export function useFileExplorer(): FileExplorerState & FileExplorerActions {
     }))
   }, [listResult])
 
-  const bucketName = listResult?.success ? listResult.data.bucketName : undefined
-
   // Clear selection when path changes
   useEffect(() => {
     setSelectedItems([])
+    setLastSelectedIndex(null)
   }, [path])
+
+  // Clean up selected items that no longer exist when items change
+  useEffect(() => {
+    setSelectedItems((prev) => {
+      if (prev.length === 0) return prev
+      const existingKeys = new Set(items.map((item) => item.path.key))
+      const filtered = prev.filter((key) => existingKeys.has(key))
+      return filtered.length === prev.length ? prev : filtered
+    })
+  }, [items])
 
   // Refresh function using tRPC query invalidation
   const utils = trpc.useUtils()
@@ -72,9 +81,6 @@ export function useFileExplorer(): FileExplorerState & FileExplorerActions {
       await utils.r2.list.invalidate({ folder })
       // Refetch items to ensure UI is up to date
       await refetchItems()
-      // Filter selected items that no longer exist
-      const existingKeys = new Set(items.map((item) => item.path.key))
-      setSelectedItems((prev) => prev.filter((key) => existingKeys.has(key)))
     },
     [utils.r2.list, refetchItems]
   )
@@ -89,28 +95,28 @@ export function useFileExplorer(): FileExplorerState & FileExplorerActions {
   const sortedItems = useMemo(() => {
     const folders = items.filter((i) => i.path.isFolder)
     const files = items.filter((i) => !i.path.isFolder)
+    
     const sortFn = (a: UIR2Item, b: UIR2Item) => {
-      let aVal
-      let bVal
-
+      let comparison = 0
+      
       if (sortKey === 'name') {
-        aVal = a.path?.name || ''
-        bVal = b.path?.name || ''
+        const aName = a.path?.name || ''
+        const bName = b.path?.name || ''
+        comparison = aName.localeCompare(bName, undefined, { numeric: true, sensitivity: 'base' })
       } else if (sortKey === 'size') {
-        aVal = a.size ?? 0
-        bVal = b.size ?? 0
+        const aVal = a.size ?? 0
+        const bVal = b.size ?? 0
+        comparison = aVal - bVal
       } else if (sortKey === 'lastModified') {
-        aVal = new Date(a.lastModified || 0).getTime()
-        bVal = new Date(b.lastModified || 0).getTime()
-      } else {
-        aVal = a[sortKey] || ''
-        bVal = b[sortKey] || ''
+        // lastModified is already a Date object, use getTime() directly
+        const aVal = a.lastModified?.getTime() ?? 0
+        const bVal = b.lastModified?.getTime() ?? 0
+        comparison = aVal - bVal
       }
-
-      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1
-      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1
-      return 0
+      
+      return sortDirection === 'asc' ? comparison : -comparison
     }
+    
     return [...folders.sort(sortFn), ...files.sort(sortFn)]
   }, [items, sortKey, sortDirection])
 
@@ -127,19 +133,36 @@ export function useFileExplorer(): FileExplorerState & FileExplorerActions {
     [sortKey]
   )
 
-  const onItemSelect = (itemId: string) => {
-    setSelectedItems((prev) =>
-      prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId]
-    )
-  }
+  const onItemSelect = useCallback((itemId: string, shiftKey = false) => {
+    const currentIndex = sortedItems.findIndex((item) => item.path.key === itemId)
+    
+    if (shiftKey && lastSelectedIndex !== null && currentIndex !== -1) {
+      // Shift-click: select range from last selected to current
+      const start = Math.min(lastSelectedIndex, currentIndex)
+      const end = Math.max(lastSelectedIndex, currentIndex)
+      const rangeKeys = sortedItems.slice(start, end + 1).map((item) => item.path.key)
+      
+      // Add range to selection (don't remove existing selections)
+      setSelectedItems((prev) => {
+        const newSelection = new Set([...prev, ...rangeKeys])
+        return Array.from(newSelection)
+      })
+    } else {
+      // Regular click: toggle single item
+      setSelectedItems((prev) =>
+        prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId]
+      )
+      setLastSelectedIndex(currentIndex)
+    }
+  }, [sortedItems, lastSelectedIndex])
 
   const onSelectAll = useCallback(() => {
-    if (selectedItems.length === items.length) {
+    if (selectedItems.length === items.length && items.length > 0) {
       setSelectedItems([])
     } else {
       setSelectedItems(items.map((item) => item.path.key))
     }
-  }, [selectedItems])
+  }, [selectedItems, items])
 
   const deselectItems = useCallback(async () => {
     setSelectedItems([])
@@ -168,7 +191,6 @@ export function useFileExplorer(): FileExplorerState & FileExplorerActions {
 
   return {
     // State
-    bucketName,
     path,
     items,
     sortKey,

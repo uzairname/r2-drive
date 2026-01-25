@@ -2,10 +2,13 @@
 
 import { UploadProgress } from '@/components/bucket-navigator/upload-progress'
 import { useFileOperations } from '@/hooks/file-operations'
-import { AdminOnly } from '@/hooks/use-admin'
+import { CanWrite, usePermissions } from '@/hooks/use-permissions'
+import { useBucketInfo } from '@/hooks/use-bucket-info'
 import { useDialogs } from '@/hooks/use-dialogs'
 import { useFileExplorer } from '@/hooks/use-file-explorer'
 import { Paths } from '@/lib/path'
+import { Path } from '@/lib/path'
+import { useState } from 'react'
 import { R2Breadcrumbs } from './bucket-navigator/breadcrumbs'
 import { CopyLinkButton } from './bucket-navigator/copy-link-button'
 import { CreateFolderDialog } from './bucket-navigator/create-folder-dialog'
@@ -14,11 +17,27 @@ import { DropZone } from './bucket-navigator/drop-zone'
 import { FileActionButtons } from './bucket-navigator/file-action-buttons'
 import { R2FileTable } from './bucket-navigator/file-table'
 import { OverwriteConfirmationDialog } from './bucket-navigator/overwrite-confirmation-dialog'
+import { RenameDialog } from './bucket-navigator/rename-dialog'
 import { R2SelectionInfo } from './bucket-navigator/selection-info'
+import { ShareDialog } from './bucket-navigator/share-dialog'
 
 export function BucketNavigator() {
+  const { bucketName } = useBucketInfo()
   const fileExplorer = useFileExplorer()
   const dialogs = useDialogs()
+  const { canWrite } = usePermissions()
+
+  // Current folder path for permission checks
+  const currentPathKey = fileExplorer.path.key
+
+  // Share dialog state
+  const [showShareDialog, setShowShareDialog] = useState(false)
+  const [itemToShare, setItemToShare] = useState<Path | null>(null)
+
+  const handleShareItem = (path: Path) => {
+    setItemToShare(path)
+    setShowShareDialog(true)
+  }
 
   // Get current file names for overwrite checking
   const currentFiles = fileExplorer.items
@@ -42,7 +61,7 @@ export function BucketNavigator() {
           <nav className="overflow-hidden">
             <div className="flex items-center justify-between">
               <R2Breadcrumbs
-                bucketName={fileExplorer.bucketName}
+                bucketName={bucketName}
                 path={fileExplorer.path}
                 onClick={fileExplorer.setPath}
               />
@@ -55,6 +74,7 @@ export function BucketNavigator() {
         <DropZone
           onFileDrop={ops.upload.uploadFiles}
           className="border border-border rounded-lg bg-card overflow-hidden"
+          disabled={!canWrite(currentPathKey)}
         >
           <R2FileTable
             items={fileExplorer.sortedItems}
@@ -63,27 +83,31 @@ export function BucketNavigator() {
             onSelectAll={fileExplorer.onSelectAll}
             onFolderClick={fileExplorer.setPath}
             onDeleteItem={ops.delete.onDeleteItem}
+            onRenameItem={ops.rename.onRenameItem}
             onDownloadItems={ops.download.downloadItems}
+            onShareItem={handleShareItem}
             tableSort={{
               sortKey: fileExplorer.sortKey,
               sortDirection: fileExplorer.sortDirection,
               onSort: fileExplorer.onSort,
             }}
+            isLoading={fileExplorer.isLoading}
           />
         </DropZone>
 
         {/* File Action Btns */}
-        <AdminOnly>
+        <CanWrite path={currentPathKey}>
           <FileActionButtons
             onUploadFile={ops.upload.triggerFileUpload}
             onUploadFolder={ops.upload.triggerFolderUpload}
             onCreateFolder={dialogs.openCreateFolderDialog}
           />
-        </AdminOnly>
+        </CanWrite>
 
         {/* Selection Info */}
         <R2SelectionInfo
           count={fileExplorer.selectedItemKeys.length}
+          selectedKeys={fileExplorer.selectedItemKeys}
           onDeleteClick={() =>
             ops.delete.onDeleteItems(fileExplorer.selectedItemKeys, fileExplorer.items)
           }
@@ -139,6 +163,26 @@ export function BucketNavigator() {
         onConfirmDelete={ops.delete.onConfirmDelete}
         items={ops.delete.itemsToDelete}
         isDeleting={ops.delete.isDeleting}
+      />
+
+      {/* Rename Dialog */}
+      <RenameDialog
+        show={ops.rename.showRenameDialog}
+        onOpenChange={ops.rename.setShowRenameDialog}
+        itemPath={ops.rename.itemToRename}
+        onSuccess={async () => {
+          await fileExplorer.refreshItems(fileExplorer.path)
+        }}
+      />
+
+      {/* Share Dialog */}
+      <ShareDialog
+        open={showShareDialog}
+        onOpenChange={(open) => {
+          setShowShareDialog(open)
+          if (!open) setItemToShare(null)
+        }}
+        itemPath={itemToShare}
       />
     </>
   )

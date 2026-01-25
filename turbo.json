@@ -11,11 +11,13 @@
       "dependsOn": ["^dev"]
     },
     "lint": {
-      "outputs": []
+      "dependsOn": ["^lint"]
+    },
+    "typecheck": {
+      "dependsOn": ["^typecheck"]
     },
     "deploy": {
-      "dependsOn": ["build"],
-      "outputs": []
+      "dependsOn": ["build"]
     }
   }
 }

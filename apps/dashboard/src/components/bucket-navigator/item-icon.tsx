@@ -19,7 +19,8 @@ export function ItemIcon({ item }: { item: UIR2Item }) {
     <Folder className="h-5 w-5 text-primary" />
   ) : (
     (() => {
-      const mimeType = getMimeType(item.path.name)
+      // Use actual contentType from R2 if available, otherwise fall back to filename-based detection
+      const mimeType = item.contentType || getMimeType(item.path.name)
       if (mimeType.startsWith('image/')) return <Image className="h-5 w-5 text-blue-500" />
       if (mimeType.startsWith('audio/')) return <Music className="h-5 w-5 text-pink-500" />
       if (mimeType.startsWith('video/')) return <Video className="h-5 w-5 text-purple-500" />

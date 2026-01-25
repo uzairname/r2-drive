@@ -48,7 +48,7 @@ export function useFileDelete({ onFilesChange }: UseFileDeleteProps): DeleteStat
       toast.error(`Failed to delete`, { description: result.error.message })
     } else {
       const itemCount = itemsToDelete.length
-      toast.success(`Successfully deleted ${itemCount} ${itemCount === 1 ? 'item' : 'items'}`)
+      toast.success(`Deleted ${itemCount} ${itemCount === 1 ? 'item' : 'items'}`)
       await onFilesChange()
     }
     setIsDeleting(false)

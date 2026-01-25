@@ -1,10 +1,11 @@
-import { AdminOnly } from '@/hooks/use-admin'
+import { usePermissions } from '@/hooks/use-permissions'
 import { Button } from '@r2-drive/ui/components/button'
 import { Download, Trash2, X } from 'lucide-react'
 import { useEffect } from 'react'
 
 export interface R2SelectionInfoProps {
   count: number
+  selectedKeys: string[]
   onDeleteClick?: () => void
   onDownload?: () => void
   onClose?: () => void
@@ -14,12 +15,17 @@ export interface R2SelectionInfoProps {
 
 export function R2SelectionInfo({
   count,
+  selectedKeys,
   onDeleteClick,
   onDownload,
   onClose,
   isDeleting,
   isDownloading,
 }: R2SelectionInfoProps) {
+  const { canWrite } = usePermissions()
+
+  // Only show delete button if user can write to ALL selected items
+  const canDeleteAll = selectedKeys.every((key) => canWrite(key))
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && onClose) {
@@ -54,19 +60,17 @@ export function R2SelectionInfo({
               <Download className="h-4 w-4" />
             </Button>
           )}
-          <AdminOnly>
-            {onDeleteClick && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onDeleteClick}
-                disabled={isDeleting}
-                className="text-destructive hover:text-destructive hover:bg-destructive/50"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
-          </AdminOnly>
+          {canDeleteAll && onDeleteClick && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onDeleteClick}
+              disabled={isDeleting}
+              className="text-destructive hover:text-destructive hover:bg-destructive/50"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
     </div>

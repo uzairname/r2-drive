@@ -1,0 +1,31 @@
+{
+  "name": "@r2-drive/db",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.17.0",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "generate": "drizzle-kit generate",
+    "studio": "drizzle-kit studio",
+    "migrate": "tsx ./scripts/migrate.ts"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.4",
+    "drizzle-orm": "^0.38.0",
+    "@r2-drive/utils": "workspace:*",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "@r2-drive/config": "workspace:*",
+    "@r2-drive/ts-config": "workspace:*",
+    "drizzle-kit": "^0.30.0",
+    "tsx": "^4.20.6"
+  }
+}

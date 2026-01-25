@@ -11,7 +11,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@r2-drive/ui/components/dropdown-menu'
-import { LogIn, LogOut, Settings, Shield, User } from 'lucide-react'
+import { Link2, LogIn, LogOut, Settings, Shield, User } from 'lucide-react'
+import Link from 'next/link'
 import { signIn, signOut, useSession } from 'next-auth/react'
 import { useState } from 'react'
 import { SignInDialog } from '../bucket-navigator/sign-in-dialog'
@@ -103,6 +104,14 @@ export function ProfileDropdown({ onSettings }: ProfileDropdownProps = {}) {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              {isAdmin && (
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link href="/admin/shares">
+                    <Link2 className="mr-2 h-4 w-4" />
+                    <span>Manage Shares</span>
+                  </Link>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={onSettings} className="cursor-pointer">
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Settings</span>

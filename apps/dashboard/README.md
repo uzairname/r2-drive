@@ -2,46 +2,9 @@
 
 A file explorer for Cloudflare R2 storage, built with Next.js and OpenNext.js.
 
-## Features
-
-- File/folder navigation with breadcrumbs
-- Upload, download, preview and delete operations
-- Light/dark mode support
-
 ## Development
 
-### Setup Steps
-
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   pnpm install
-   ```
-3. Create your `.env` file in `apps/dashboard`
-4. Fill in your environment variables in `.dev.vars`. You need a Cloudflare API Token with permissions:
-
-- Account > Workers Scripts > Edit
-- Account > Workers R2 Storage > Edit
-- Account > Account Settings > Read
-
-5. Generate TypeScript types for Cloudflare:
-   ```bash
-   npx wrangler types --env-interface CloudflareEnv
-   ```
-6. Start the development server:
-   ```bash
-   pnpm dev
-   ```
-
-## Deploy
-
-From root directory:
-
-```bash
-pnpm run deploy
-```
-
-## R2 Configuration
+### R2 Configuration
 
 Create an R2 bucket on the cloudflare dashboard. Update its CORS policy to allow POSTs and your production domain
 
@@ -76,6 +39,45 @@ declare module '../cloudflare-env' {
   }
 }
 ```
+
+### Setup Steps
+
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   pnpm install
+   ```
+3. Create `.env` and `.dev.vars`, and `.env.local` files in `apps/dashboard`
+4. Fill in your environment variables in `.dev.vars`. You need a Cloudflare API Token with permissions:
+
+- Account > Workers Scripts > Edit
+- Account > Workers R2 Storage > Edit
+- Account > Account Settings > Read
+
+5. 
+6. Start the development server:
+   ```bash
+   pnpm dev
+   ```
+
+### Commands
+
+Compile typescript
+```
+npx tsc --p apps/dashboard
+```
+
+Generate TypeScript types for Cloudflare:
+```bash
+npx wrangler types --env-interface CloudflareEnv
+```
+
+Deploy
+```
+pnpm run deploy
+```
+
+
 
 ## Troubleshooting
 

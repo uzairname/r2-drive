@@ -54,6 +54,7 @@ jobs:
           echo "${{ secrets.R2_ACCESS_KEY_ID }}" | npx wrangler secret put R2_ACCESS_KEY_ID
           echo "${{ secrets.R2_SECRET_ACCESS_KEY }}" | npx wrangler secret put R2_SECRET_ACCESS_KEY
           echo "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" | npx wrangler secret put CLOUDFLARE_ACCOUNT_ID
+          echo "${{ secrets.DATABASE_URL }}" | npx wrangler secret put DATABASE_URL
           cd ../..
 
       - name: Create R2 buckets

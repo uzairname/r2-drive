@@ -12,4 +12,4 @@ export const R2_CONFIG = {
 } as const
 
 export const isDev = process.env.NODE_ENV === 'development'
-export const USE_PRESIGNED_UPLOADS = true
+export const USE_PRESIGNED_UPLOADS = !isDev
