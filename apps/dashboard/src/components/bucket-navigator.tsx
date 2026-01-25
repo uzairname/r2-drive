@@ -1,5 +1,6 @@
 'use client'
 
+import { DownloadProgress } from '@/components/bucket-navigator/download-progress'
 import { UploadProgress } from '@/components/bucket-navigator/upload-progress'
 import { useFileOperations } from '@/hooks/file-operations'
 import { CanWrite, usePermissions } from '@/hooks/use-permissions'
@@ -140,6 +141,13 @@ export function BucketNavigator() {
 
       {/* Upload Progress Indicator */}
       <UploadProgress uploads={ops.upload.uploadProgress} onCancel={ops.upload.cancelAllUploads} />
+
+      {/* Download Progress Indicator */}
+      <DownloadProgress
+        downloads={ops.download.downloadProgress}
+        isZipping={ops.download.isZipping}
+        onCancel={ops.download.cancelDownload}
+      />
 
       {/* Create Folder Dialog */}
       <CreateFolderDialog

@@ -1,3 +1,4 @@
+import { clearCookie, getCookie } from '@/lib/cookies'
 import { Path, Paths } from '@/lib/path'
 import { trpc } from '@/trpc/client'
 import { Result } from '@r2-drive/utils/result'
@@ -7,19 +8,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 const PENDING_REDIRECT_COOKIE = 'r2-pending-redirect-token'
-
-function getCookie(name: string): string | undefined {
-  if (typeof document === 'undefined') return undefined
-  const value = `; ${document.cookie}`
-  const parts = value.split(`; ${name}=`)
-  if (parts.length === 2) return parts.pop()?.split(';').shift()
-  return undefined
-}
-
-function clearCookie(name: string): void {
-  if (typeof document === 'undefined') return
-  document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`
-}
 
 type SortKey = 'name' | 'size' | 'lastModified'
 type SortDirection = 'asc' | 'desc'

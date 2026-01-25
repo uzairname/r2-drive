@@ -104,9 +104,9 @@ export function R2Breadcrumbs({ bucketName, path, onClick }: R2BreadcrumbsProps)
 
   return (
     <div className="flex items-center gap-2 text-sm h-10">
-      <BreadcrumbButton path={Paths.getRoot()} isFirst>
+      {bucketName && <BreadcrumbButton path={Paths.getRoot()} isFirst>
         {bucketName || 'My Bucket'}
-      </BreadcrumbButton>
+      </BreadcrumbButton>}
       {renderBreadcrumbsContent()}
     </div>
   )

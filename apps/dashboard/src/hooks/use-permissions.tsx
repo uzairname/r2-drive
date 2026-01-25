@@ -1,17 +1,11 @@
 'use client'
 
+import { getCookie } from '@/lib/cookies'
 import { trpc } from '@/trpc/client'
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef } from 'react'
 
 const REGISTERED_TOKENS_KEY = 'r2-registered-tokens'
 const TOKEN_COOKIE = 'r2-share-tokens'
-
-function getCookie(name: string): string | undefined {
-  const value = `; ${document.cookie}`
-  const parts = value.split(`; ${name}=`)
-  if (parts.length === 2) return parts.pop()?.split(';').shift()
-  return undefined
-}
 
 function getRegisteredTokens(): Set<string> {
   try {

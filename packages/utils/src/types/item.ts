@@ -9,6 +9,15 @@ export interface ItemUploadProgress {
   isMultipart?: boolean
 }
 
+export interface ItemDownloadProgress {
+  key: string
+  fileName: string
+  downloadedBytes: number
+  totalBytes: number
+  status: 'pending' | 'downloading' | 'completed' | 'error'
+  errorMsg?: string
+}
+
 export interface UIR2Item {
   path: Path
   size: number

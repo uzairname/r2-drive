@@ -4,6 +4,7 @@ import { createFolder } from './create-folder'
 import { deleteObjects } from './delete'
 import { download } from './download'
 import { list } from './list'
+import { listRecursive } from './list-recursive'
 import { renameObject } from './rename'
 import { uploadRouter } from './upload'
 
@@ -14,5 +15,6 @@ export const r2Router = router({
   download,
   upload: uploadRouter,
   list,
+  listRecursive,
   renameObject,
 })

@@ -50,6 +50,24 @@ export async function listAllKeysInFolder(env: CloudflareEnv, folder: Path): Pro
 }
 
 /**
+ * Returns all files (not folder placeholders) under the specified folder,
+ * including in subfolders, with their keys and sizes.
+ * Used for folder downloads.
+ */
+export async function listAllFilesInFolder(
+  env: CloudflareEnv,
+  folder: Path
+): Promise<Array<{ key: string; size: number }>> {
+  const { objects } = await _listObjectsWithPrefix(env, folder.key, undefined)
+  return objects
+    .filter((obj) => !obj.key.endsWith('/')) // Exclude folder placeholders
+    .map((obj) => ({
+      key: obj.key,
+      size: obj.size,
+    }))
+}
+
+/**
  * List files and folders directly under the specified folder path that
  * can be displayed in the file explorer.
  * Excludes the placeholder object for the folder itself.
