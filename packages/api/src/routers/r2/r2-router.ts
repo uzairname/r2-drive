@@ -5,6 +5,7 @@ import { deleteObjects } from './delete'
 import { download } from './download'
 import { list } from './list'
 import { listRecursive } from './list-recursive'
+import { previewUrl } from './preview-url'
 import { renameObject } from './rename'
 import { uploadRouter } from './upload'
 
@@ -16,5 +17,6 @@ export const r2Router = router({
   upload: uploadRouter,
   list,
   listRecursive,
+  previewUrl,
   renameObject,
 })

@@ -2,6 +2,7 @@
 
 import { DownloadProgress } from '@/components/bucket-navigator/download-progress'
 import { UploadProgress } from '@/components/bucket-navigator/upload-progress'
+import { FileViewerDialog, useFileViewer } from '@/components/file-viewer'
 import { useFileOperations } from '@/hooks/file-operations'
 import { CanWriteInside, usePermissions } from '@/hooks/use-permissions'
 import { useBucketInfo } from '@/hooks/use-bucket-info'
@@ -28,6 +29,7 @@ export function BucketNavigator() {
   const fileExplorer = useFileExplorer()
   const dialogs = useDialogs()
   const { canWriteInside } = usePermissions()
+  const viewer = useFileViewer(fileExplorer.sortedItems)
 
   // Current folder path for permission checks
   const currentPathKey = fileExplorer.path.key
@@ -88,6 +90,7 @@ export function BucketNavigator() {
             onRenameItem={ops.rename.onRenameItem}
             onDownloadItems={ops.download.downloadItems}
             onShareItem={handleShareItem}
+            onPreviewItem={viewer.openViewer}
             tableSort={{
               sortKey: fileExplorer.sortKey,
               sortDirection: fileExplorer.sortDirection,
@@ -204,6 +207,18 @@ export function BucketNavigator() {
           if (!open) setItemToShare(null)
         }}
         itemPath={itemToShare}
+      />
+
+      {/* File Viewer Dialog */}
+      <FileViewerDialog
+        isOpen={viewer.isOpen}
+        item={viewer.currentItem}
+        items={viewer.previewableItems}
+        currentIndex={viewer.currentIndex}
+        onClose={viewer.closeViewer}
+        onNext={viewer.goToNext}
+        onPrevious={viewer.goToPrevious}
+        onDownload={(path) => ops.download.downloadItems([path])}
       />
     </>
   )

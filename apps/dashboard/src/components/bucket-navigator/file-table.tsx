@@ -16,8 +16,23 @@ import { truncateString } from '@r2-drive/ui/lib/utils'
 import { formatBytes } from '@r2-drive/utils/file-utils'
 import { UIR2Item } from '@r2-drive/utils/types/item'
 import { ArrowDown, ArrowUp, ArrowUpDown, Calendar, Download, FolderOpen, Link2, Pencil, Trash2 } from 'lucide-react'
-import React from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { ItemIcon } from './item-icon'
+
+function useIsTouchDevice() {
+  const [isTouch, setIsTouch] = useState(false)
+
+  useEffect(() => {
+    const query = window.matchMedia('(pointer: coarse)')
+    setIsTouch(query.matches)
+
+    const handler = (e: MediaQueryListEvent) => setIsTouch(e.matches)
+    query.addEventListener('change', handler)
+    return () => query.removeEventListener('change', handler)
+  }, [])
+
+  return isTouch
+}
 
 export interface TableSortProps {
   sortKey: 'name' | 'size' | 'lastModified'
@@ -35,6 +50,7 @@ export function R2FileTable({
   onRenameItem,
   onDownloadItems,
   onShareItem,
+  onPreviewItem,
   tableSort,
   isLoading,
 }: {
@@ -47,10 +63,24 @@ export function R2FileTable({
   onRenameItem: (path: Path) => void
   onDownloadItems: (paths: Path[]) => void
   onShareItem?: (path: Path) => void
+  onPreviewItem?: (item: UIR2Item) => void
   tableSort?: TableSortProps
   isLoading?: boolean
 }) {
   const { canWrite } = usePermissions()
+  const isTouchDevice = useIsTouchDevice()
+
+  const handleRowClick = useCallback(
+    (item: UIR2Item) => {
+      if (item.path.isFolder) {
+        onFolderClick(item.path)
+      } else if (isTouchDevice && onPreviewItem) {
+        // On touch devices, single tap opens preview for files
+        onPreviewItem(item)
+      }
+    },
+    [isTouchDevice, onFolderClick, onPreviewItem]
+  )
 
   const renderSortIcon = (key: 'name' | 'size' | 'lastModified') => {
     if (!tableSort) return null
@@ -155,7 +185,8 @@ export function R2FileTable({
                 <TableRow
                   key={item.path.key}
                   className="border-b border-border hover:bg-muted/50 cursor-pointer group"
-                  onClick={() => item.path.isFolder && onFolderClick(item.path)}
+                  onClick={() => handleRowClick(item)}
+                  onDoubleClick={() => !isTouchDevice && !item.path.isFolder && onPreviewItem?.(item)}
                 >
                   <TableCell
                     className="cursor-pointer"

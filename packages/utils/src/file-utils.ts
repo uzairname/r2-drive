@@ -104,3 +104,33 @@ export function isTextFile(filename: string): boolean {
   const mime = getMimeType(filename)
   return mime.startsWith('text/') || mime === 'application/json' || mime === 'application/xml'
 }
+
+/**
+ * Preview type for file viewer
+ */
+export type PreviewType = 'image' | 'pdf' | 'text' | 'video' | 'audio' | 'unsupported'
+
+/**
+ * Get preview type based on mime type
+ */
+export function getPreviewType(mimeType: string | undefined): PreviewType {
+  if (!mimeType) return 'unsupported'
+  if (mimeType.startsWith('image/')) return 'image'
+  if (mimeType === 'application/pdf') return 'pdf'
+  if (mimeType.startsWith('video/')) return 'video'
+  if (mimeType.startsWith('audio/')) return 'audio'
+  if (
+    mimeType.startsWith('text/') ||
+    ['application/json', 'application/xml', 'application/javascript'].includes(mimeType)
+  ) {
+    return 'text'
+  }
+  return 'unsupported'
+}
+
+/**
+ * Check if a file can be previewed in the browser
+ */
+export function isPreviewable(mimeType: string | undefined): boolean {
+  return getPreviewType(mimeType) !== 'unsupported'
+}

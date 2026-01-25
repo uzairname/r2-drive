@@ -1,0 +1,116 @@
+'use client'
+
+import { Button } from '@r2-drive/ui/components/button'
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react'
+import { useState } from 'react'
+import { Document, Page, pdfjs } from 'react-pdf'
+import 'react-pdf/dist/Page/AnnotationLayer.css'
+import 'react-pdf/dist/Page/TextLayer.css'
+
+// Configure pdf.js worker
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
+
+interface PdfViewerProps {
+  url: string
+}
+
+export function PdfViewer({ url }: PdfViewerProps) {
+  const [numPages, setNumPages] = useState<number | null>(null)
+  const [pageNumber, setPageNumber] = useState(1)
+  const [scale, setScale] = useState(1)
+  const [error, setError] = useState<string | null>(null)
+
+  function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
+    setNumPages(numPages)
+  }
+
+  function onDocumentLoadError(err: Error) {
+    setError(err.message)
+  }
+
+  const goToPrevPage = () => setPageNumber((prev) => Math.max(prev - 1, 1))
+  const goToNextPage = () => setPageNumber((prev) => Math.min(prev + 1, numPages || 1))
+  const zoomIn = () => setScale((prev) => Math.min(prev + 0.25, 3))
+  const zoomOut = () => setScale((prev) => Math.max(prev - 0.25, 0.5))
+
+  if (error) {
+    return (
+      <div className="text-center text-white/80">
+        <p className="text-red-400 mb-2">Failed to load PDF</p>
+        <p className="text-sm text-white/60">{error}</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-4">
+      {/* Controls */}
+      <div className="flex items-center gap-2 bg-white/10 rounded-lg p-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={goToPrevPage}
+          disabled={pageNumber <= 1}
+          className="text-white hover:bg-white/10 h-8 w-8 p-0"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <span className="text-white text-sm px-2">
+          {pageNumber} / {numPages || '?'}
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={goToNextPage}
+          disabled={pageNumber >= (numPages || 1)}
+          className="text-white hover:bg-white/10 h-8 w-8 p-0"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+        <div className="w-px h-4 bg-white/20 mx-1" />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={zoomOut}
+          disabled={scale <= 0.5}
+          className="text-white hover:bg-white/10 h-8 w-8 p-0"
+        >
+          <ZoomOut className="h-4 w-4" />
+        </Button>
+        <span className="text-white text-sm px-1 w-12 text-center">
+          {Math.round(scale * 100)}%
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={zoomIn}
+          disabled={scale >= 3}
+          className="text-white hover:bg-white/10 h-8 w-8 p-0"
+        >
+          <ZoomIn className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* PDF Document */}
+      <div className="overflow-auto max-h-[calc(100vh-12rem)] rounded-lg">
+        <Document
+          file={url}
+          onLoadSuccess={onDocumentLoadSuccess}
+          onLoadError={onDocumentLoadError}
+          loading={
+            <div className="flex items-center justify-center p-8">
+              <span className="text-white/60">Loading PDF...</span>
+            </div>
+          }
+        >
+          <Page
+            pageNumber={pageNumber}
+            scale={scale}
+            renderTextLayer={true}
+            renderAnnotationLayer={true}
+          />
+        </Document>
+      </div>
+    </div>
+  )
+}
