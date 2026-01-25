@@ -1,4 +1,4 @@
-import { and, createDb, desc, eq, gt, isNull, or, SharePermission, shareTokens, sql } from '@r2-drive/db'
+import { createDb, desc, eq, SharePermission, shareTokens } from '@r2-drive/db'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 import { adminProcedure, publicProcedure, router } from '../../trpc'
@@ -121,34 +121,4 @@ export const sharingRouter = router({
       })),
     }
   }),
-
-  // Register access for a token (increments access count) - called once when user first uses a share link
-  registerAccess: publicProcedure
-    .input(z.object({ tokenId: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      if (!ctx.env.DATABASE_URL) {
-        return { success: false }
-      }
-
-      const db = createDb(ctx.env.DATABASE_URL)
-      const now = new Date()
-
-      // Only update if token exists and is not expired
-      const result = await db
-        .update(shareTokens)
-        .set({
-          lastAccessedAt: now,
-          accessCount: sql`${shareTokens.accessCount} + 1`,
-        })
-        .where(
-          and(
-            eq(shareTokens.id, input.tokenId),
-            or(isNull(shareTokens.expiresAt), gt(shareTokens.expiresAt, now))
-          )
-        )
-        .returning({ id: shareTokens.id })
-
-      return { success: result.length > 0 }
-    }),
-
 })

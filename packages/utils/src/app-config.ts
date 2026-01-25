@@ -11,5 +11,5 @@ export const R2_CONFIG = {
   BATCH_DELETE_SIZE: 1000, // R2 limit for bulk delete operations
 } as const
 
-export const isDev = process.env.NODE_ENV === 'development'
+export const isDev = (process.env.NODE_ENV as string) === 'development'
 export const USE_PRESIGNED_UPLOADS = !isDev

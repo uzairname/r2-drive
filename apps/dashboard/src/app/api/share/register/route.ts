@@ -4,7 +4,8 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
   try {
-    const { tokenId } = await request.json()
+    const body = (await request.json()) as { tokenId?: unknown }
+    const tokenId = body.tokenId
 
     if (!tokenId || typeof tokenId !== 'string') {
       return NextResponse.json({ success: false }, { status: 400 })
