@@ -1,8 +1,22 @@
-'use client'
-
 import { BucketNavigator } from '@/components/bucket-navigator'
 import { Header } from '@/components/header'
+import type { Metadata } from 'next'
 import { Suspense } from 'react'
+
+type Props = {
+  searchParams: Promise<{ path?: string }>
+}
+
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const { path } = await searchParams
+  if (!path) {
+    return { title: 'Home' }
+  }
+  // Get the last segment of the path as the folder name
+  const segments = path.split('/').filter(Boolean)
+  const folderName = segments[segments.length - 1] || 'Home'
+  return { title: folderName }
+}
 
 export default function ExplorerPage() {
   return (

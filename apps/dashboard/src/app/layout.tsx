@@ -1,7 +1,15 @@
 import { auth } from '@/auth'
 import { Providers } from '@/components/providers'
 import '@r2-drive/ui/globals.css'
+import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
+
+export const metadata: Metadata = {
+  title: {
+    default: 'R2 Drive',
+    template: '%s | R2 Drive',
+  },
+}
 
 const fontSans = Geist({
   subsets: ['latin'],
