@@ -75,7 +75,7 @@ export function FileViewerDialog({
             onDownload={() => onDownload(item.path)}
           />
 
-          <div className="flex-1 flex items-center justify-center overflow-hidden p-4">
+          <div className="flex-1 flex items-center justify-center overflow-auto p-4 min-h-0">
             <FileViewerContent item={item} />
           </div>
         </DialogPrimitive.Content>

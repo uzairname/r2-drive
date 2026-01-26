@@ -20,7 +20,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 
 export default function ExplorerPage() {
   return (
-    <div className="p-6  max-w-4xl mx-auto flex flex-col h-screen">
+    <div className="p-6  max-w-5xl mx-auto flex flex-col h-screen">
       <Suspense fallback={<div className="animate-pulse text-center">Loading...</div>}>
         <Header />
         <BucketNavigator />

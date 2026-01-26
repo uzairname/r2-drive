@@ -79,7 +79,9 @@ function GalleryTile({
     >
       {/* Checkbox - top left */}
       <div
-        className="absolute top-2 left-2 z-10"
+        className={`absolute top-2 left-2 z-10 transition-opacity ${
+          isSelectionMode || isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+        }`}
         onClick={(e) => {
           e.stopPropagation()
           onSelect(e.shiftKey)
@@ -122,7 +124,7 @@ function GalleryTile({
       </div>
 
       {/* File name - bottom */}
-      <TruncatedText className="text-sm font-medium text-foreground text-center truncate w-full px-1">
+      <TruncatedText className="text-sm font-medium text-foreground text-center w-full px-1">
         {item.path.name}
       </TruncatedText>
     </div>
@@ -200,32 +202,36 @@ export function GalleryView({
   )
 
   return (
-    <div className="border border-border rounded-md p-4">
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-        {isLoading ? (
-          <GalleryLoadingState />
-        ) : items.length === 0 ? (
-          <GalleryEmptyState />
-        ) : (
-          items.map((item) => (
-            <GalleryTile
-              key={item.path.key}
-              item={item}
-              isSelected={selectedItems.includes(item.path.key)}
-              isSelectionMode={isSelectionMode}
-              onSelect={(shiftKey) => onItemSelect(item.path.key, shiftKey)}
-              onClick={() => handleTileClick(item)}
-              onDoubleClick={() => handleTileDoubleClick(item)}
-              isTouchDevice={isTouchDevice}
-              canWrite={canWrite(item.path.key)}
-              isAdmin={isAdmin}
-              onDownload={() => onDownloadItems([item.path])}
-              onShare={onShareItem ? () => onShareItem(item.path) : undefined}
-              onRename={() => onRenameItem(item.path)}
-              onDelete={() => onDeleteItem(item.path)}
-            />
-          ))
-        )}
+    <div className="border border-border rounded-md overflow-hidden">
+      <div className="max-h-[70vh] overflow-auto overscroll-contain">
+        <div className="p-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            {isLoading ? (
+              <GalleryLoadingState />
+            ) : items.length === 0 ? (
+              <GalleryEmptyState />
+            ) : (
+              items.map((item) => (
+                <GalleryTile
+                  key={item.path.key}
+                  item={item}
+                  isSelected={selectedItems.includes(item.path.key)}
+                  isSelectionMode={isSelectionMode}
+                  onSelect={(shiftKey) => onItemSelect(item.path.key, shiftKey)}
+                  onClick={() => handleTileClick(item)}
+                  onDoubleClick={() => handleTileDoubleClick(item)}
+                  isTouchDevice={isTouchDevice}
+                  canWrite={canWrite(item.path.key)}
+                  isAdmin={isAdmin}
+                  onDownload={() => onDownloadItems([item.path])}
+                  onShare={onShareItem ? () => onShareItem(item.path) : undefined}
+                  onRename={() => onRenameItem(item.path)}
+                  onDelete={() => onDeleteItem(item.path)}
+                />
+              ))
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )

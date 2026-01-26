@@ -1,8 +1,8 @@
 import { useIsAdmin } from '@/hooks/use-admin'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { usePermissions } from '@/hooks/use-permissions'
 import { Path } from '@/lib/path'
 import { Checkbox } from '@r2-drive/ui/components/checkbox'
-import { ScrollArea } from '@r2-drive/ui/components/scroll-area'
 import { Skeleton } from '@r2-drive/ui/components/skeleton'
 import {
   TableBody,
@@ -149,7 +149,7 @@ export function R2FileTable({
 
   return (
     <div className="border border-border rounded-md overflow-hidden">
-      <ScrollArea className="max-h-[70vh]">
+      <div className="max-h-[70vh] overflow-auto overscroll-contain">
         <table className="w-full min-w-[500px] text-sm">
           {colGroup}
           <TableHeader className="sticky top-0 z-10">
@@ -221,7 +221,7 @@ export function R2FileTable({
                       <div className="shrink-0">
                         <ItemIcon item={item} />
                       </div>
-                      <TruncatedText className="font-medium text-foreground truncate">
+                      <TruncatedText className="font-medium text-foreground">
                         {item.path.name}
                       </TruncatedText>
                     </div>
@@ -251,7 +251,7 @@ export function R2FileTable({
             )}
           </TableBody>
         </table>
-      </ScrollArea>
+      </div>
     </div>
   )
 }
