@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { TOKEN_PARAM } from '@/lib/constants'
 
-const TOKEN_PARAM = 'token'
 const TOKEN_COOKIE = 'r2-share-tokens'
 const PENDING_REDIRECT_COOKIE = 'r2-pending-redirect-token'
 

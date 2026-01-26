@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@r2-drive/ui/components/button'
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react'
+import { ZoomIn, ZoomOut } from 'lucide-react'
 import { useState } from 'react'
 import { Document, Page, pdfjs } from 'react-pdf'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
@@ -16,7 +16,6 @@ interface PdfViewerProps {
 
 export function PdfViewer({ url }: PdfViewerProps) {
   const [numPages, setNumPages] = useState<number | null>(null)
-  const [pageNumber, setPageNumber] = useState(1)
   const [scale, setScale] = useState(1)
   const [error, setError] = useState<string | null>(null)
 
@@ -28,8 +27,6 @@ export function PdfViewer({ url }: PdfViewerProps) {
     setError(err.message)
   }
 
-  const goToPrevPage = () => setPageNumber((prev) => Math.max(prev - 1, 1))
-  const goToNextPage = () => setPageNumber((prev) => Math.min(prev + 1, numPages || 1))
   const zoomIn = () => setScale((prev) => Math.min(prev + 0.25, 3))
   const zoomOut = () => setScale((prev) => Math.max(prev - 0.25, 0.5))
 
@@ -43,56 +40,40 @@ export function PdfViewer({ url }: PdfViewerProps) {
   }
 
   return (
-    <div className="flex flex-col items-center gap-4">
-      {/* Controls */}
-      <div className="flex items-center gap-2 bg-white/10 rounded-lg p-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={goToPrevPage}
-          disabled={pageNumber <= 1}
-          className="text-white hover:bg-white/10 h-8 w-8 p-0"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <span className="text-white text-sm px-2">
-          {pageNumber} / {numPages || '?'}
-        </span>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={goToNextPage}
-          disabled={pageNumber >= (numPages || 1)}
-          className="text-white hover:bg-white/10 h-8 w-8 p-0"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-        <div className="w-px h-4 bg-white/20 mx-1" />
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={zoomOut}
-          disabled={scale <= 0.5}
-          className="text-white hover:bg-white/10 h-8 w-8 p-0"
-        >
-          <ZoomOut className="h-4 w-4" />
-        </Button>
-        <span className="text-white text-sm px-1 w-12 text-center">
-          {Math.round(scale * 100)}%
-        </span>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={zoomIn}
-          disabled={scale >= 3}
-          className="text-white hover:bg-white/10 h-8 w-8 p-0"
-        >
-          <ZoomIn className="h-4 w-4" />
-        </Button>
+    <div className="flex flex-col h-full w-full max-w-full">
+      {/* Fixed Controls */}
+      <div className="flex-shrink-0 flex items-center justify-center mb-4">
+        <div className="flex items-center gap-2 bg-white/10 rounded-lg p-2">
+          <span className="text-white text-sm px-2">
+            {numPages ? `${numPages} pages` : 'Loading...'}
+          </span>
+          <div className="w-px h-4 bg-white/20 mx-1" />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={zoomOut}
+            disabled={scale <= 0.5}
+            className="text-white hover:bg-white/10 h-8 w-8 p-0"
+          >
+            <ZoomOut className="h-4 w-4" />
+          </Button>
+          <span className="text-white text-sm px-1 w-12 text-center">
+            {Math.round(scale * 100)}%
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={zoomIn}
+            disabled={scale >= 3}
+            className="text-white hover:bg-white/10 h-8 w-8 p-0"
+          >
+            <ZoomIn className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
-      {/* PDF Document */}
-      <div className="overflow-auto max-h-[calc(100vh-12rem)] rounded-lg">
+      {/* PDF Document - scrollable container with all pages */}
+      <div className="flex-1 overflow-auto rounded-lg min-h-0">
         <Document
           file={url}
           onLoadSuccess={onDocumentLoadSuccess}
@@ -102,13 +83,18 @@ export function PdfViewer({ url }: PdfViewerProps) {
               <span className="text-white/60">Loading PDF...</span>
             </div>
           }
+          className="flex flex-col items-center gap-4"
         >
-          <Page
-            pageNumber={pageNumber}
-            scale={scale}
-            renderTextLayer={true}
-            renderAnnotationLayer={true}
-          />
+          {numPages &&
+            Array.from({ length: numPages }, (_, index) => (
+              <Page
+                key={`page_${index + 1}`}
+                pageNumber={index + 1}
+                scale={scale}
+                renderTextLayer={true}
+                renderAnnotationLayer={true}
+              />
+            ))}
         </Document>
       </div>
     </div>

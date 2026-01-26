@@ -108,7 +108,7 @@ export function isTextFile(filename: string): boolean {
 /**
  * Preview type for file viewer
  */
-export type PreviewType = 'image' | 'pdf' | 'text' | 'video' | 'audio' | 'unsupported'
+export type PreviewType = 'image' | 'pdf' | 'text' | 'video' | 'audio' | 'markdown' | 'spreadsheet' | 'unsupported'
 
 /**
  * Get preview type based on mime type
@@ -119,6 +119,14 @@ export function getPreviewType(mimeType: string | undefined): PreviewType {
   if (mimeType === 'application/pdf') return 'pdf'
   if (mimeType.startsWith('video/')) return 'video'
   if (mimeType.startsWith('audio/')) return 'audio'
+  if (
+    mimeType === 'text/csv' ||
+    mimeType === 'text/tab-separated-values' ||
+    mimeType === 'application/vnd.ms-excel' ||
+    mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  ) {
+    return 'spreadsheet'
+  }
   if (
     mimeType.startsWith('text/') ||
     ['application/json', 'application/xml', 'application/javascript'].includes(mimeType)

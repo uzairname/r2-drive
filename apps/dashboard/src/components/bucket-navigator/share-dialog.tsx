@@ -1,5 +1,6 @@
 'use client'
 
+import { TOKEN_PARAM } from '@/lib/constants'
 import { Path } from '@/lib/path'
 import { trpc } from '@/trpc/client'
 import { Button } from '@r2-drive/ui/components/button'
@@ -58,7 +59,7 @@ export function ShareDialog({ open, onOpenChange, itemPath }: ShareDialogProps) 
 
       // Generate the share link
       const baseUrl = window.location.origin
-      const shareUrl = `${baseUrl}?token=${result.token}`
+      const shareUrl = `${baseUrl}?${TOKEN_PARAM}=${result.token}`
       setGeneratedLink(shareUrl)
     } catch (error) {
       console.error('Failed to create share link:', error)

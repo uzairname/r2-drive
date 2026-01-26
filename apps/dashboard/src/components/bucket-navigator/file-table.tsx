@@ -3,19 +3,18 @@ import { usePermissions } from '@/hooks/use-permissions'
 import { Path } from '@/lib/path'
 import { Button } from '@r2-drive/ui/components/button'
 import { Checkbox } from '@r2-drive/ui/components/checkbox'
+import { ScrollArea } from '@r2-drive/ui/components/scroll-area'
 import { Skeleton } from '@r2-drive/ui/components/skeleton'
 import {
-  Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from '@r2-drive/ui/components/table'
-import { truncateString } from '@r2-drive/ui/lib/utils'
 import { formatBytes } from '@r2-drive/utils/file-utils'
 import { UIR2Item } from '@r2-drive/utils/types/item'
-import { ArrowDown, ArrowUp, ArrowUpDown, Calendar, Download, FolderOpen, Link2, Pencil, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, Download, FolderOpen, Link2, Pencil, Trash2 } from 'lucide-react'
 import React, { useCallback, useEffect, useState } from 'react'
 import { ItemIcon } from './item-icon'
 
@@ -103,18 +102,16 @@ export function R2FileTable({
           <TableCell>
             <div className="flex items-center gap-3">
               <Skeleton className="h-5 w-5 rounded" />
-              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-4 w-32" />
             </div>
           </TableCell>
           <TableCell>
-            <Skeleton className="h-4 w-16" />
+            <Skeleton className="h-4 w-12" />
           </TableCell>
           <TableCell>
-            <div className="flex items-center gap-2">
-              <Skeleton className="h-4 w-4 rounded" />
-              <Skeleton className="h-4 w-24" />
-            </div>
+            <Skeleton className="h-4 w-20" />
           </TableCell>
+          <TableCell></TableCell>
         </TableRow>
       ))}
     </>
@@ -138,13 +135,24 @@ export function R2FileTable({
     </TableRow>
   )
 
+  const colGroup = (
+    <colgroup>
+      <col className="w-10" />
+      <col className="min-w-[150px]" />
+      <col className="w-20" />
+      <col className="w-28" />
+      <col className="w-36" />
+    </colgroup>
+  )
+
   return (
-    <div className="overflow-hidden">
-      <div className="max-h-[70vh] overflow-y-auto">
-        <Table>
-          <TableHeader className="sticky top-0 bg-card z-10">
-            <TableRow className="border-b border-border">
-              <TableHead className="w-12 cursor-pointer bg-card" onClick={onSelectAll}>
+    <div className="border border-border rounded-md overflow-hidden">
+      <ScrollArea className="max-h-[70vh]">
+        <table className="w-full min-w-[500px] text-sm">
+          {colGroup}
+          <TableHeader className="sticky top-0 z-10">
+            <TableRow className="bg-card hover:bg-card border-b border-border">
+              <TableHead className="cursor-pointer bg-card" onClick={onSelectAll}>
                 <div className="flex items-center justify-center h-full w-full">
                   <Checkbox
                     checked={selectedItems.length === items.length && items.length > 0}
@@ -161,18 +169,18 @@ export function R2FileTable({
                 Name{renderSortIcon('name')}
               </TableHead>
               <TableHead
-                className="text-left w-32 cursor-pointer select-none bg-card"
+                className="text-left cursor-pointer select-none bg-card"
                 onClick={() => tableSort?.onSort('size')}
               >
                 Size{renderSortIcon('size')}
               </TableHead>
               <TableHead
-                className="text-left w-48 cursor-pointer select-none bg-card"
+                className="text-left cursor-pointer select-none bg-card"
                 onClick={() => tableSort?.onSort('lastModified')}
               >
-                Last Modified{renderSortIcon('lastModified')}
+                Modified{renderSortIcon('lastModified')}
               </TableHead>
-              <TableHead className="w-12 bg-card"></TableHead>
+              <TableHead className="bg-card"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -194,6 +202,9 @@ export function R2FileTable({
                       e.stopPropagation()
                       onItemSelect(item.path.key, e.shiftKey)
                     }}
+                    onDoubleClick={(e) => {
+                      e.stopPropagation()
+                    }}
                   >
                     <div className="flex items-center justify-center h-full w-full">
                       <Checkbox
@@ -203,11 +214,13 @@ export function R2FileTable({
                       />
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <ItemIcon item={item} />
-                      <span className="font-medium text-foreground" title={item.path.name}>
-                        {truncateString(item.path.name, 40)}
+                  <TableCell className="overflow-hidden">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="shrink-0">
+                        <ItemIcon item={item} />
+                      </div>
+                      <span className="font-medium text-foreground truncate" title={item.path.name}>
+                        {item.path.name}
                       </span>
                     </div>
                   </TableCell>
@@ -217,10 +230,7 @@ export function R2FileTable({
                       : '—'}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      {item.lastModified?.toISOString().slice(0, 10) ?? '—'}
-                    </div>
+                    {item.lastModified?.toISOString().slice(0, 10) ?? '—'}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
@@ -287,8 +297,8 @@ export function R2FileTable({
               ))
             )}
           </TableBody>
-        </Table>
-      </div>
+        </table>
+      </ScrollArea>
     </div>
   )
 }

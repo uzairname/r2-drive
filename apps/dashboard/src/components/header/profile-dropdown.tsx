@@ -12,10 +12,10 @@ import {
   DropdownMenuTrigger,
 } from '@r2-drive/ui/components/dropdown-menu'
 import { Link2, LogIn, LogOut, Settings, Shield, User } from 'lucide-react'
-import Link from 'next/link'
 import { signIn, signOut, useSession } from 'next-auth/react'
 import { useState } from 'react'
 import { SignInDialog } from '../bucket-navigator/sign-in-dialog'
+import { SharesDrawer } from '../shares-drawer'
 
 export interface ProfileDropdownProps {
   /** Callback for settings action */
@@ -25,6 +25,7 @@ export interface ProfileDropdownProps {
 export function ProfileDropdown({ onSettings }: ProfileDropdownProps = {}) {
   const { data: session, status } = useSession()
   const [showSignInDialog, setShowSignInDialog] = useState(false)
+  const [showSharesDrawer, setShowSharesDrawer] = useState(false)
 
   const isLoggedIn = !!session
   const userName = session?.user?.name
@@ -105,11 +106,12 @@ export function ProfileDropdown({ onSettings }: ProfileDropdownProps = {}) {
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               {isAdmin && (
-                <DropdownMenuItem asChild className="cursor-pointer">
-                  <Link href="/admin/shares">
-                    <Link2 className="mr-2 h-4 w-4" />
-                    <span>Manage Shares</span>
-                  </Link>
+                <DropdownMenuItem
+                  onClick={() => setShowSharesDrawer(true)}
+                  className="cursor-pointer"
+                >
+                  <Link2 className="mr-2 h-4 w-4" />
+                  <span>Manage Shares</span>
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem onClick={onSettings} className="cursor-pointer">
@@ -150,6 +152,8 @@ export function ProfileDropdown({ onSettings }: ProfileDropdownProps = {}) {
         setShowDialog={setShowSignInDialog}
         isLoading={status === 'loading'}
       />
+
+      <SharesDrawer open={showSharesDrawer} onOpenChange={setShowSharesDrawer} />
     </>
   )
 }

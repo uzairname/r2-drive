@@ -127,7 +127,7 @@ export const sharingRouter = router({
     .input(z.object({ tokenId: z.string() }))
     .query(async ({ ctx, input }) => {
       if (!ctx.env.DATABASE_URL) {
-        return { pathPrefix: null }
+        return { pathPrefix: null, isFile: false }
       }
 
       const db = createDb(ctx.env.DATABASE_URL)
@@ -145,9 +145,14 @@ export const sharingRouter = router({
         .limit(1)
 
       if (result.length === 0 || !result[0]) {
-        return { pathPrefix: null }
+        return { pathPrefix: null, isFile: false }
       }
 
-      return { pathPrefix: result[0].pathPrefix }
+      const pathPrefix = result[0].pathPrefix
+      // A file share has a non-empty path that doesn't end with /
+      // Folders end with / and root is empty string
+      const isFile = pathPrefix !== '' && !pathPrefix.endsWith('/')
+
+      return { pathPrefix, isFile }
     }),
 })

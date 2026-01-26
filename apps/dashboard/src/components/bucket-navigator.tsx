@@ -10,7 +10,8 @@ import { useDialogs } from '@/hooks/use-dialogs'
 import { useFileExplorer } from '@/hooks/use-file-explorer'
 import { Paths } from '@/lib/path'
 import { Path } from '@/lib/path'
-import { useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useEffect, useRef, useState } from 'react'
 import { R2Breadcrumbs } from './bucket-navigator/breadcrumbs'
 import { CompressionDialog } from './bucket-navigator/compression-dialog'
 import { CopyLinkButton } from './bucket-navigator/copy-link-button'
@@ -30,6 +31,43 @@ export function BucketNavigator() {
   const dialogs = useDialogs()
   const { canWriteInside } = usePermissions()
   const viewer = useFileViewer(fileExplorer.sortedItems)
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const hasHandledPreviewRef = useRef(false)
+
+  // Handle preview query parameter (from file share links)
+  const previewKey = searchParams.get('preview')
+  useEffect(() => {
+    if (hasHandledPreviewRef.current) return
+    if (!previewKey) return
+    if (fileExplorer.isLoading) return
+    if (fileExplorer.sortedItems.length === 0) return
+
+    // Find the item to preview
+    const itemToPreview = fileExplorer.sortedItems.find(
+      (item) => item.path.key === previewKey
+    )
+
+    if (itemToPreview) {
+      hasHandledPreviewRef.current = true
+      viewer.openViewer(itemToPreview)
+
+      // Remove preview param from URL without triggering navigation
+      const newParams = new URLSearchParams(searchParams.toString())
+      newParams.delete('preview')
+      const queryString = newParams.toString()
+      router.replace(`/explorer${queryString ? `?${queryString}` : ''}`, {
+        scroll: false,
+      })
+    }
+  }, [previewKey, fileExplorer.isLoading, fileExplorer.sortedItems, viewer, searchParams, router])
+
+  // Reset the ref when preview param changes (for subsequent share links)
+  useEffect(() => {
+    if (!previewKey) {
+      hasHandledPreviewRef.current = false
+    }
+  }, [previewKey])
 
   // Current folder path for permission checks
   const currentPathKey = fileExplorer.path.key

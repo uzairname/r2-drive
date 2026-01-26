@@ -64,7 +64,7 @@ export function useFileExplorer(): FileExplorerState & FileExplorerActions {
     }
   )
 
-  // Handle redirect to shared directory when a new token is used
+  // Handle redirect to shared directory/file when a new token is used
   useEffect(() => {
     if (hasHandledRedirectRef.current) return
     if (!pendingTokenId) return
@@ -79,10 +79,20 @@ export function useFileExplorer(): FileExplorerState & FileExplorerActions {
 
     // Navigate to the token's path (empty string means root, no redirect needed)
     if (pathPrefix !== '') {
-      const targetPath = Paths.fromR2Key(pathPrefix)
-      const searchParams = Paths.toURLSearchParams(targetPath)
-      const queryString = searchParams.toString()
-      router.push(`/explorer${queryString ? `?${queryString}` : ''}`)
+      if (tokenPathData.isFile) {
+        // For file shares, navigate to the parent folder with preview param
+        const filePath = Paths.fromR2Key(pathPrefix)
+        const parentPath = Paths.slice(filePath, -1) // Get parent folder
+        const urlParams = Paths.toURLSearchParams(parentPath)
+        urlParams.set('preview', pathPrefix)
+        router.push(`/explorer?${urlParams.toString()}`)
+      } else {
+        // For folder shares, navigate directly to the folder
+        const targetPath = Paths.fromR2Key(pathPrefix)
+        const urlParams = Paths.toURLSearchParams(targetPath)
+        const queryString = urlParams.toString()
+        router.push(`/explorer${queryString ? `?${queryString}` : ''}`)
+      }
     }
   }, [tokenPathData, pendingTokenId, router])
 
