@@ -99,7 +99,7 @@ export function ShareDialog({ open, onOpenChange, itemPath }: ShareDialogProps) 
             <Link2 className="h-5 w-5" />
             Create Share Link
           </DialogTitle>
-          <DialogDescription>{pathDisplay}</DialogDescription>
+          <DialogDescription className="text-left">{pathDisplay}</DialogDescription>
         </DialogHeader>
 
         {!generatedLink ? (

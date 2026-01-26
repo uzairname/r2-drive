@@ -100,4 +100,69 @@ export namespace PathUtils {
     const newParts = [...path.parts.slice(0, -1), newName]
     return createPath(newParts, path.isFolder)
   }
+
+  /**
+   * Normalize a path key by removing trailing slashes.
+   * Useful for comparing paths regardless of whether they represent files or folders.
+   */
+  export function normalizeKey(key: string): string {
+    return key.replace(/\/+$/, '')
+  }
+
+  /**
+   * Check if a path key represents a folder (ends with / or is empty for root).
+   */
+  export function isFolder(key: string): boolean {
+    return key === '' || key.endsWith('/')
+  }
+
+  /**
+   * Check if `childKey` is contained within `parentKey`.
+   * e.g., "folder1/file.txt" is a child of "folder1/"
+   */
+  export function isChildOf(childKey: string, parentKey: string): boolean {
+    if (parentKey === '') return true // Root contains everything
+    return childKey.startsWith(parentKey)
+  }
+
+  /**
+   * Check if `parentKey` is a parent directory of `childKey`.
+   * e.g., "folder1/" is a parent of "folder1/folder2/file.txt"
+   * Only folders (keys ending with /) can be parents.
+   */
+  export function isParentOf(parentKey: string, childKey: string): boolean {
+    if (!parentKey.endsWith('/')) return false
+    return childKey.startsWith(parentKey)
+  }
+
+  /**
+   * Check if two path keys refer to the same location (ignoring trailing slashes).
+   */
+  export function keysEqual(keyA: string, keyB: string): boolean {
+    return normalizeKey(keyA) === normalizeKey(keyB)
+  }
+
+  /**
+   * Validate a path key string.
+   * Returns null if valid, or an error message if invalid.
+   *
+   * Rules:
+   * - Empty string is valid (root)
+   * - No leading slash
+   * - No double slashes
+   * - Segments cannot be empty (handled by no double slashes)
+   */
+  export function validateKey(key: string): string | null {
+    if (key === '') return null // Root is valid
+
+    if (key.startsWith('/')) {
+      return 'Path must not start with /'
+    }
+
+    if (key.includes('//')) {
+      return 'Path must not contain double slashes'
+    }
+
+    return null
+  }
 }

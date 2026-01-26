@@ -1,4 +1,5 @@
 import { SharePermission } from '@r2-drive/db'
+import { PathUtils } from '@r2-drive/utils'
 import { Context } from '../trpc'
 
 export interface AccessCheckResult {
@@ -13,21 +14,14 @@ export interface ValidatedToken {
 }
 
 /**
- * Check if a path is accessible given a set of validated tokens
- * A token grants access if the path starts with the token's pathPrefix
+ * Check if a path is accessible given a set of validated tokens.
+ * A token grants access if the path starts with the token's pathPrefix.
  */
 function tokenGrantsAccess(token: ValidatedToken, path: string): boolean {
   // Empty prefix means root access (all paths)
   if (token.pathPrefix === '') return true
   // Path must start with the token's prefix
-  return path.startsWith(token.pathPrefix)
-}
-
-/**
- * Normalize a path for comparison by removing trailing slashes
- */
-function normalizePath(path: string): string {
-  return path.replace(/\/+$/, '')
+  return PathUtils.isChildOf(path, token.pathPrefix)
 }
 
 /**
@@ -37,12 +31,7 @@ function normalizePath(path: string): string {
 function isExactTokenPath(tokenPrefix: string, path: string): boolean {
   // Root access tokens don't have a protected directory
   if (tokenPrefix === '') return false
-
-  // Normalize both paths for comparison
-  const normalizedToken = normalizePath(tokenPrefix)
-  const normalizedPath = normalizePath(path)
-
-  return normalizedToken === normalizedPath
+  return PathUtils.keysEqual(tokenPrefix, path)
 }
 
 /**
@@ -110,6 +99,14 @@ export function getEffectivePermission(ctx: Context, path: string): SharePermiss
 }
 
 /**
+ * Check if an item is a parent directory leading to a token's path.
+ * e.g., "folder1/" is a parent of "folder1/folder2/file.txt"
+ */
+function isParentOfTokenPath(token: ValidatedToken, itemKey: string): boolean {
+  return PathUtils.isParentOf(itemKey, token.pathPrefix)
+}
+
+/**
  * Filter items to only those accessible with at least read permission
  */
 export function filterAccessibleItems<T extends { key: string }>(
@@ -126,8 +123,18 @@ export function filterAccessibleItems<T extends { key: string }>(
   }
 
   return items.filter((item) => {
+    // Check if any token grants direct access to this item
     const permission = getTokenPermission(tokens, item.key)
-    return permission !== null
+    if (permission !== null) return true
+
+    // Check if this item is a parent directory leading to a shared path
+    for (const token of tokens) {
+      if (isParentOfTokenPath(token, item.key)) {
+        return true
+      }
+    }
+
+    return false
   })
 }
 
@@ -148,11 +155,11 @@ export function hasAnyAccess(ctx: Context, folderPath: string): boolean {
       return true
     }
     // Token grants access to a parent (folder is within token's scope)
-    if (folderPath.startsWith(token.pathPrefix)) {
+    if (PathUtils.isChildOf(folderPath, token.pathPrefix)) {
       return true
     }
     // Token grants access to a subfolder (should show folder but filter contents)
-    if (token.pathPrefix.startsWith(folderPath)) {
+    if (PathUtils.isChildOf(token.pathPrefix, folderPath)) {
       return true
     }
   }

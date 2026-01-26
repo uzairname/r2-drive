@@ -1,4 +1,5 @@
 import { createDb, desc, eq, SharePermission, shareTokens, and, or, isNull, gt } from '@r2-drive/db'
+import { PathUtils } from '@r2-drive/utils'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 import { adminProcedure, publicProcedure, router } from '../../trpc'
@@ -18,7 +19,18 @@ export const sharingRouter = router({
   create: adminProcedure
     .input(
       z.object({
-        pathPrefix: z.string().default(''),
+        pathPrefix: z
+          .string()
+          .default('')
+          .superRefine((val, ctx) => {
+            const error = PathUtils.validateKey(val)
+            if (error) {
+              ctx.addIssue({
+                code: "custom",
+                message: error,
+              })
+            }
+          }),
         permission: z.enum(['read', 'write']),
         label: z.string().optional(),
         expiresIn: z.number().optional(), // milliseconds from now, null = never
@@ -149,9 +161,7 @@ export const sharingRouter = router({
       }
 
       const pathPrefix = result[0].pathPrefix
-      // A file share has a non-empty path that doesn't end with /
-      // Folders end with / and root is empty string
-      const isFile = pathPrefix !== '' && !pathPrefix.endsWith('/')
+      const isFile = !PathUtils.isFolder(pathPrefix)
 
       return { pathPrefix, isFile }
     }),

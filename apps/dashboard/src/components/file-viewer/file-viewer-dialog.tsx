@@ -4,7 +4,7 @@ import { Path } from '@/lib/path'
 import { Dialog, DialogOverlay, DialogPortal, DialogTitle } from '@r2-drive/ui/components/dialog'
 import { UIR2Item } from '@r2-drive/utils/types/item'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
-import { useCallback, useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { FileViewerContent } from './file-viewer-content'
 import { FileViewerToolbar } from './file-viewer-toolbar'
 
@@ -30,7 +30,6 @@ export function FileViewerDialog({
   onDownload,
 }: FileViewerDialogProps) {
   const contentRef = useRef<HTMLDivElement>(null)
-  const touchStartX = useRef<number | null>(null)
 
   // Keyboard navigation
   useEffect(() => {
@@ -53,38 +52,6 @@ export function FileViewerDialog({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isOpen, onNext, onPrevious, onClose])
 
-  // Touch swipe handling
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    const touch = e.touches[0]
-    if (touch) {
-      touchStartX.current = touch.clientX
-    }
-  }, [])
-
-  const handleTouchEnd = useCallback(
-    (e: React.TouchEvent) => {
-      if (touchStartX.current === null) return
-
-      const touch = e.changedTouches[0]
-      if (!touch) return
-
-      const touchEndX = touch.clientX
-      const diff = touchStartX.current - touchEndX
-      const threshold = 50
-
-      if (Math.abs(diff) > threshold) {
-        if (diff > 0) {
-          onNext()
-        } else {
-          onPrevious()
-        }
-      }
-
-      touchStartX.current = null
-    },
-    [onNext, onPrevious]
-  )
-
   if (!item) return null
 
   return (
@@ -93,8 +60,6 @@ export function FileViewerDialog({
         <DialogOverlay className="bg-black/90" />
         <DialogPrimitive.Content
           ref={contentRef}
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
           className="fixed inset-0 z-50 flex flex-col outline-none"
           onPointerDownOutside={(e) => e.preventDefault()}
           aria-describedby={undefined}

@@ -1,8 +1,15 @@
-import { AdminOnly } from '@/hooks/use-admin'
+import { useIsAdmin } from '@/hooks/use-admin'
 import { usePermissions } from '@/hooks/use-permissions'
 import { Path } from '@/lib/path'
 import { Button } from '@r2-drive/ui/components/button'
 import { Checkbox } from '@r2-drive/ui/components/checkbox'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@r2-drive/ui/components/dropdown-menu'
 import { ScrollArea } from '@r2-drive/ui/components/scroll-area'
 import { Skeleton } from '@r2-drive/ui/components/skeleton'
 import {
@@ -14,7 +21,17 @@ import {
 } from '@r2-drive/ui/components/table'
 import { formatBytes } from '@r2-drive/utils/file-utils'
 import { UIR2Item } from '@r2-drive/utils/types/item'
-import { ArrowDown, ArrowUp, ArrowUpDown, Download, FolderOpen, Link2, Pencil, Trash2 } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Download,
+  FolderOpen,
+  Link2,
+  MoreVertical,
+  Pencil,
+  Trash2,
+} from 'lucide-react'
 import React, { useCallback, useEffect, useState } from 'react'
 import { ItemIcon } from './item-icon'
 
@@ -31,6 +48,70 @@ function useIsTouchDevice() {
   }, [])
 
   return isTouch
+}
+
+function FileRowActions({
+  item,
+  isTouchDevice,
+  canWrite,
+  isAdmin,
+  onDownload,
+  onShare,
+  onRename,
+  onDelete,
+}: {
+  item: UIR2Item
+  isTouchDevice: boolean
+  canWrite: boolean
+  isAdmin: boolean
+  onDownload: () => void
+  onShare?: () => void
+  onRename: () => void
+  onDelete: () => void
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          className={`h-8 w-8 p-0 hover:bg-primary/10 ${isTouchDevice ? '' : 'invisible group-hover:visible'}`}
+          onClick={(e) => e.stopPropagation()}
+          aria-label={`Actions for ${item.path.name}`}
+        >
+          <MoreVertical className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+        <DropdownMenuItem onClick={onDownload}>
+          <Download className="h-4 w-4 mr-2" />
+          Download
+        </DropdownMenuItem>
+        {isAdmin && onShare && (
+          <DropdownMenuItem onClick={onShare}>
+            <Link2 className="h-4 w-4 mr-2" />
+            Share
+          </DropdownMenuItem>
+        )}
+        {canWrite && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onRename} disabled={item.path.isFolder}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Rename
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={onDelete}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
 }
 
 export interface TableSortProps {
@@ -67,6 +148,7 @@ export function R2FileTable({
   isLoading?: boolean
 }) {
   const { canWrite } = usePermissions()
+  const { isAdmin } = useIsAdmin()
   const isTouchDevice = useIsTouchDevice()
 
   const handleRowClick = useCallback(
@@ -141,7 +223,7 @@ export function R2FileTable({
       <col className="min-w-[150px]" />
       <col className="w-20" />
       <col className="w-28" />
-      <col className="w-36" />
+      <col className="w-12" />
     </colgroup>
   )
 
@@ -233,65 +315,16 @@ export function R2FileTable({
                     {item.lastModified?.toISOString().slice(0, 10) ?? '—'}
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="invisible group-hover:visible transition-none h-8 w-8 p-0 hover:bg-primary/10"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onDownloadItems([item.path])
-                        }}
-                        aria-label={`Download ${item.path.name}`}
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
-                      <AdminOnly>
-                        {onShareItem && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="invisible group-hover:visible transition-none h-8 w-8 p-0 hover:bg-primary/10"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onShareItem(item.path)
-                            }}
-                            aria-label={`Share ${item.path.name}`}
-                          >
-                            <Link2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </AdminOnly>
-                      {canWrite(item.path.key) && (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={item.path.isFolder}
-                            className="invisible group-hover:visible transition-none h-8 w-8 p-0 hover:bg-primary/10"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onRenameItem(item.path)
-                            }}
-                            aria-label={`Rename ${item.path.name}`}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="invisible group-hover:visible transition-none h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onDeleteItem(item.path)
-                            }}
-                            aria-label={`Delete ${item.path.name}`}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
+                    <FileRowActions
+                      item={item}
+                      isTouchDevice={isTouchDevice}
+                      canWrite={canWrite(item.path.key)}
+                      isAdmin={isAdmin}
+                      onDownload={() => onDownloadItems([item.path])}
+                      onShare={onShareItem ? () => onShareItem(item.path) : undefined}
+                      onRename={() => onRenameItem(item.path)}
+                      onDelete={() => onDeleteItem(item.path)}
+                    />
                   </TableCell>
                 </TableRow>
               ))
