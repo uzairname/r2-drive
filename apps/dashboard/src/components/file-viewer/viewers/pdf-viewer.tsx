@@ -16,9 +16,13 @@ export function PdfViewer({ url }: PdfViewerProps) {
 
   // Dynamically import react-pdf only on client side
   useEffect(() => {
-    import('react-pdf').then((module) => {
-      import('react-pdf/dist/Page/AnnotationLayer.css')
-      import('react-pdf/dist/Page/TextLayer.css')
+    Promise.all([
+      import('react-pdf'),
+      // @ts-expect-error CSS imports
+      import('react-pdf/dist/Page/AnnotationLayer.css'),
+      // @ts-expect-error CSS imports
+      import('react-pdf/dist/Page/TextLayer.css'),
+    ]).then(([module]) => {
       module.pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${module.pdfjs.version}/build/pdf.worker.min.mjs`
       setPdfComponents({ Document: module.Document, Page: module.Page })
     })
