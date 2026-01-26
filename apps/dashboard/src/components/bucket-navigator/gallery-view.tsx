@@ -1,4 +1,5 @@
 import { useIsAdmin } from '@/hooks/use-admin'
+import { useLongPress } from '@/hooks/use-long-press'
 import { usePermissions } from '@/hooks/use-permissions'
 import { Path } from '@/lib/path'
 import { Checkbox } from '@r2-drive/ui/components/checkbox'
@@ -61,6 +62,13 @@ function GalleryTile({
   onRename: () => void
   onDelete: () => void
 }) {
+  const longPressHandlers = useLongPress({
+    onLongPress: () => {
+      // Long press selects the item (enters selection mode)
+      onSelect()
+    },
+  })
+
   return (
     <div
       className={`group relative flex flex-col items-center p-3 rounded-lg border cursor-pointer transition-colors ${
@@ -76,11 +84,14 @@ function GalleryTile({
         }
       }}
       onDoubleClick={onDoubleClick}
+      {...(isTouchDevice ? longPressHandlers : {})}
     >
       {/* Checkbox - top left */}
       <div
         className={`absolute top-2 left-2 z-10 transition-opacity ${
-          isSelectionMode || isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+          isSelectionMode || isSelected || isTouchDevice
+            ? 'opacity-100'
+            : 'opacity-0 group-hover:opacity-100'
         }`}
         onClick={(e) => {
           e.stopPropagation()

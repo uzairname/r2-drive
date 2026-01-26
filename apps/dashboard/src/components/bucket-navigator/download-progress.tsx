@@ -3,6 +3,7 @@ import { formatBytes } from '@r2-drive/utils/file-utils'
 import { ItemDownloadProgress } from '@r2-drive/utils/types/item'
 import { Archive, CheckCircle, Download, XCircle } from 'lucide-react'
 import React, { useEffect } from 'react'
+import { TruncatedText } from './truncated-text'
 
 export function DownloadProgress({
   downloads,
@@ -109,9 +110,9 @@ export function DownloadProgress({
                   ) : (
                     <div className="h-4 w-4 border-2 border-muted-foreground rounded-full animate-spin flex-shrink-0" />
                   )}
-                  <span className="truncate flex-1" title={download.fileName}>
+                  <TruncatedText className="flex-1 text-sm">
                     {download.fileName}
-                  </span>
+                  </TruncatedText>
                   <span className="text-muted-foreground text-xs">
                     {download.status === 'error'
                       ? 'Failed'

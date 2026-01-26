@@ -1,8 +1,8 @@
 'use client'
 
 import { Button } from '@r2-drive/ui/components/button'
-import { truncateString } from '@r2-drive/ui/lib/utils'
 import { UIR2Item } from '@r2-drive/utils/types/item'
+import { TruncatedText } from '../bucket-navigator/truncated-text'
 import { Check, ChevronLeft, ChevronRight, Download, Link, X } from 'lucide-react'
 import { useState } from 'react'
 
@@ -46,9 +46,9 @@ export function FileViewerToolbar({
   return (
     <div className="flex items-center justify-between px-4 py-3 bg-black/50 backdrop-blur-sm border-b border-white/10">
       <div className="flex items-center gap-2 min-w-0 flex-1">
-        <span className="text-white font-medium truncate" title={item.path.name}>
-          {truncateString(item.path.name, 50)}
-        </span>
+        <TruncatedText className="text-white font-medium">
+          {item.path.name}
+        </TruncatedText>
         {hasMultipleItems && (
           <span className="text-white/60 text-sm flex-shrink-0">
             ({currentIndex + 1} / {totalItems})

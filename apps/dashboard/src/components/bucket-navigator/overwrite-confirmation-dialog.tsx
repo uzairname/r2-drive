@@ -10,6 +10,7 @@ import {
 } from '@r2-drive/ui/components/dialog'
 import { formatBytes } from '@r2-drive/utils/file-utils'
 import { AlertTriangle } from 'lucide-react'
+import { TruncatedText } from './truncated-text'
 
 interface OverwriteConfirmationDialogProps {
   open: boolean
@@ -48,9 +49,9 @@ export function OverwriteConfirmationDialog({
                 key={index}
                 className="flex items-center justify-between text-sm bg-muted/50 rounded p-2"
               >
-                <span className="font-medium truncate flex-1 mr-2" title={file.name}>
+                <TruncatedText className="font-medium flex-1 mr-2">
                   {file.name}
-                </span>
+                </TruncatedText>
                 <span className="text-muted-foreground text-xs">{formatBytes(file.size)}</span>
               </div>
             ))}

@@ -404,7 +404,7 @@ export function PdfViewer({ url }: PdfViewerProps) {
             minHeight: 0,
           }}
         >
-          <div className="flex flex-col items-center min-h-full p-2 touch-pinch-zoom">
+          <div className="flex flex-col items-center min-h-full p-2 touch-manipulation">
             {pdfDocument}
           </div>
         </div>

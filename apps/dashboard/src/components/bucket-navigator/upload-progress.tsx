@@ -3,6 +3,7 @@ import { formatBytes } from '@r2-drive/utils/file-utils'
 import { ItemUploadProgress } from '@r2-drive/utils/types/item'
 import { CheckCircle, Upload, XCircle } from 'lucide-react'
 import React, { useEffect } from 'react'
+import { TruncatedText } from './truncated-text'
 
 export function UploadProgress({
   uploads,
@@ -100,9 +101,9 @@ export function UploadProgress({
                 ) : (
                   <div className="h-4 w-4 border-2 border-muted-foreground rounded-full animate-spin flex-shrink-0" />
                 )}
-                <span className="truncate flex-1" title={upload.fileName}>
+                <TruncatedText className="flex-1 text-sm">
                   {upload.fileName}
-                </span>
+                </TruncatedText>
                 <span className="text-muted-foreground text-xs">
                   {upload.errorMsg
                     ? 'Failed'
