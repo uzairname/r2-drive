@@ -2,22 +2,36 @@
 
 import { Button } from '@r2-drive/ui/components/button'
 import { ZoomIn, ZoomOut } from 'lucide-react'
-import { useState } from 'react'
-import { Document, Page, pdfjs } from 'react-pdf'
-import 'react-pdf/dist/Page/AnnotationLayer.css'
-import 'react-pdf/dist/Page/TextLayer.css'
-
-// Configure pdf.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 interface PdfViewerProps {
   url: string
 }
 
 export function PdfViewer({ url }: PdfViewerProps) {
+  const [pdfComponents, setPdfComponents] = useState<{
+    Document: typeof import('react-pdf').Document
+    Page: typeof import('react-pdf').Page
+  } | null>(null)
+
+  // Dynamically import react-pdf only on client side
+  useEffect(() => {
+    import('react-pdf').then((module) => {
+      import('react-pdf/dist/Page/AnnotationLayer.css')
+      import('react-pdf/dist/Page/TextLayer.css')
+      module.pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${module.pdfjs.version}/build/pdf.worker.min.mjs`
+      setPdfComponents({ Document: module.Document, Page: module.Page })
+    })
+  }, [])
   const [numPages, setNumPages] = useState<number | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
   const [scale, setScale] = useState(1)
   const [error, setError] = useState<string | null>(null)
+  const [isEditingPage, setIsEditingPage] = useState(false)
+  const [pageInputValue, setPageInputValue] = useState('')
+  const containerRef = useRef<HTMLDivElement>(null)
+  const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map())
+  const inputRef = useRef<HTMLInputElement>(null)
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     setNumPages(numPages)
@@ -30,6 +44,74 @@ export function PdfViewer({ url }: PdfViewerProps) {
   const zoomIn = () => setScale((prev) => Math.min(prev + 0.25, 3))
   const zoomOut = () => setScale((prev) => Math.max(prev - 0.25, 0.5))
 
+  const setPageRef = useCallback((pageNum: number, el: HTMLDivElement | null) => {
+    if (el) {
+      pageRefs.current.set(pageNum, el)
+    } else {
+      pageRefs.current.delete(pageNum)
+    }
+  }, [])
+
+  // Track current page based on scroll position
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container || !numPages) return
+
+    const handleScroll = () => {
+      const containerRect = container.getBoundingClientRect()
+      const containerCenter = containerRect.top + containerRect.height / 2
+
+      let closestPage = 1
+      let closestDistance = Infinity
+
+      pageRefs.current.forEach((el, pageNum) => {
+        const rect = el.getBoundingClientRect()
+        const pageCenter = rect.top + rect.height / 2
+        const distance = Math.abs(pageCenter - containerCenter)
+
+        if (distance < closestDistance) {
+          closestDistance = distance
+          closestPage = pageNum
+        }
+      })
+
+      setCurrentPage(closestPage)
+    }
+
+    container.addEventListener('scroll', handleScroll)
+    return () => container.removeEventListener('scroll', handleScroll)
+  }, [numPages])
+
+  const jumpToPage = useCallback((pageNum: number) => {
+    const pageEl = pageRefs.current.get(pageNum)
+    if (pageEl && containerRef.current) {
+      pageEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [])
+
+  const handlePageClick = () => {
+    if (!numPages) return
+    setPageInputValue(String(currentPage))
+    setIsEditingPage(true)
+    setTimeout(() => inputRef.current?.select(), 0)
+  }
+
+  const handlePageInputSubmit = () => {
+    const pageNum = parseInt(pageInputValue, 10)
+    if (!isNaN(pageNum) && numPages && pageNum >= 1 && pageNum <= numPages) {
+      jumpToPage(pageNum)
+    }
+    setIsEditingPage(false)
+  }
+
+  const handlePageInputKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handlePageInputSubmit()
+    } else if (e.key === 'Escape') {
+      setIsEditingPage(false)
+    }
+  }
+
   if (error) {
     return (
       <div className="text-center text-white/80">
@@ -39,14 +121,46 @@ export function PdfViewer({ url }: PdfViewerProps) {
     )
   }
 
+  if (!pdfComponents) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <span className="text-white/60">Loading PDF viewer...</span>
+      </div>
+    )
+  }
+
+  const { Document, Page } = pdfComponents
+
   return (
     <div className="flex flex-col h-full w-full max-w-full">
       {/* Fixed Controls */}
       <div className="flex-shrink-0 flex items-center justify-center mb-4">
         <div className="flex items-center gap-2 bg-white/10 rounded-lg p-2">
-          <span className="text-white text-sm px-2">
-            {numPages ? `${numPages} pages` : 'Loading...'}
-          </span>
+          {numPages ? (
+            isEditingPage ? (
+              <div className="flex items-center text-white text-sm px-2">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={pageInputValue}
+                  onChange={(e) => setPageInputValue(e.target.value)}
+                  onBlur={handlePageInputSubmit}
+                  onKeyDown={handlePageInputKeyDown}
+                  className="w-8 bg-white/20 rounded text-center outline-none"
+                />
+                <span className="ml-1">/ {numPages}</span>
+              </div>
+            ) : (
+              <button
+                onClick={handlePageClick}
+                className="text-white text-sm px-2 hover:bg-white/10 rounded cursor-pointer"
+              >
+                {currentPage} / {numPages}
+              </button>
+            )
+          ) : (
+            <span className="text-white text-sm px-2">Loading...</span>
+          )}
           <div className="w-px h-4 bg-white/20 mx-1" />
           <Button
             variant="ghost"
@@ -73,7 +187,7 @@ export function PdfViewer({ url }: PdfViewerProps) {
       </div>
 
       {/* PDF Document - scrollable container with all pages */}
-      <div className="flex-1 overflow-auto rounded-lg min-h-0">
+      <div ref={containerRef} className="flex-1 overflow-auto rounded-lg min-h-0">
         <Document
           file={url}
           onLoadSuccess={onDocumentLoadSuccess}
@@ -87,13 +201,14 @@ export function PdfViewer({ url }: PdfViewerProps) {
         >
           {numPages &&
             Array.from({ length: numPages }, (_, index) => (
-              <Page
-                key={`page_${index + 1}`}
-                pageNumber={index + 1}
-                scale={scale}
-                renderTextLayer={true}
-                renderAnnotationLayer={true}
-              />
+              <div key={`page_${index + 1}`} ref={(el) => setPageRef(index + 1, el)}>
+                <Page
+                  pageNumber={index + 1}
+                  scale={scale}
+                  renderTextLayer={true}
+                  renderAnnotationLayer={true}
+                />
+              </div>
             ))}
         </Document>
       </div>
