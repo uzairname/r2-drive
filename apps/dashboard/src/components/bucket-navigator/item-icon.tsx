@@ -64,12 +64,20 @@ export function getFileIconInfo(mimeType: string): FileIconInfo {
   return { Icon: File, colorClass: 'text-muted-foreground' }
 }
 
-export function ItemIcon({ item }: { item: UIR2Item }) {
+export function ItemIcon({
+  item,
+  size = 'sm',
+}: {
+  item: UIR2Item
+  size?: 'sm' | 'lg'
+}) {
+  const sizeClass = size === 'lg' ? 'h-12 w-12' : 'h-5 w-5'
+
   if (item.path.isFolder) {
-    return <Folder className="h-5 w-5 text-primary" />
+    return <Folder className={`${sizeClass} text-primary`} />
   }
 
   const mimeType = item.contentType || getMimeType(item.path.name)
   const { Icon, colorClass } = getFileIconInfo(mimeType)
-  return <Icon className={`h-5 w-5 ${colorClass}`} />
+  return <Icon className={`${sizeClass} ${colorClass}`} />
 }

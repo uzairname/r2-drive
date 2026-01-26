@@ -1,15 +1,7 @@
 import { useIsAdmin } from '@/hooks/use-admin'
 import { usePermissions } from '@/hooks/use-permissions'
 import { Path } from '@/lib/path'
-import { Button } from '@r2-drive/ui/components/button'
 import { Checkbox } from '@r2-drive/ui/components/checkbox'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@r2-drive/ui/components/dropdown-menu'
 import { ScrollArea } from '@r2-drive/ui/components/scroll-area'
 import { Skeleton } from '@r2-drive/ui/components/skeleton'
 import {
@@ -21,21 +13,13 @@ import {
 } from '@r2-drive/ui/components/table'
 import { formatBytes } from '@r2-drive/utils/file-utils'
 import { UIR2Item } from '@r2-drive/utils/types/item'
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  Download,
-  FolderOpen,
-  Link2,
-  MoreVertical,
-  Pencil,
-  Trash2,
-} from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, FolderOpen } from 'lucide-react'
 import React, { useCallback, useEffect, useState } from 'react'
+import { FileRowActions } from './file-row-actions'
 import { ItemIcon } from './item-icon'
+import { TruncatedText } from './truncated-text'
 
-function useIsTouchDevice() {
+export function useIsTouchDevice() {
   const [isTouch, setIsTouch] = useState(false)
 
   useEffect(() => {
@@ -48,70 +32,6 @@ function useIsTouchDevice() {
   }, [])
 
   return isTouch
-}
-
-function FileRowActions({
-  item,
-  isTouchDevice,
-  canWrite,
-  isAdmin,
-  onDownload,
-  onShare,
-  onRename,
-  onDelete,
-}: {
-  item: UIR2Item
-  isTouchDevice: boolean
-  canWrite: boolean
-  isAdmin: boolean
-  onDownload: () => void
-  onShare?: () => void
-  onRename: () => void
-  onDelete: () => void
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className={`h-8 w-8 p-0 hover:bg-primary/10 ${isTouchDevice ? '' : 'invisible group-hover:visible'}`}
-          onClick={(e) => e.stopPropagation()}
-          aria-label={`Actions for ${item.path.name}`}
-        >
-          <MoreVertical className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-        <DropdownMenuItem onClick={onDownload}>
-          <Download className="h-4 w-4 mr-2" />
-          Download
-        </DropdownMenuItem>
-        {isAdmin && onShare && (
-          <DropdownMenuItem onClick={onShare}>
-            <Link2 className="h-4 w-4 mr-2" />
-            Share
-          </DropdownMenuItem>
-        )}
-        {canWrite && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onRename} disabled={item.path.isFolder}>
-              <Pencil className="h-4 w-4 mr-2" />
-              Rename
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={onDelete}
-              className="text-destructive focus:text-destructive"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete
-            </DropdownMenuItem>
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
 }
 
 export interface TableSortProps {
@@ -220,7 +140,7 @@ export function R2FileTable({
   const colGroup = (
     <colgroup>
       <col className="w-10" />
-      <col className="min-w-[150px]" />
+      <col className="min-w-[150px] max-w-[400px]" />
       <col className="w-20" />
       <col className="w-28" />
       <col className="w-12" />
@@ -296,14 +216,14 @@ export function R2FileTable({
                       />
                     </div>
                   </TableCell>
-                  <TableCell className="overflow-hidden">
+                  <TableCell className="overflow-hidden max-w-[400px]">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="shrink-0">
                         <ItemIcon item={item} />
                       </div>
-                      <span className="font-medium text-foreground truncate" title={item.path.name}>
+                      <TruncatedText className="font-medium text-foreground truncate">
                         {item.path.name}
-                      </span>
+                      </TruncatedText>
                     </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground">

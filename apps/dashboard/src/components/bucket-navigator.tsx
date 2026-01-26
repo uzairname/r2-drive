@@ -8,6 +8,7 @@ import { CanWriteInside, usePermissions } from '@/hooks/use-permissions'
 import { useBucketInfo } from '@/hooks/use-bucket-info'
 import { useDialogs } from '@/hooks/use-dialogs'
 import { useFileExplorer } from '@/hooks/use-file-explorer'
+import { useViewPreference } from '@/hooks/use-view-preference'
 import { Paths } from '@/lib/path'
 import { Path } from '@/lib/path'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -20,10 +21,12 @@ import { DeleteConfirmationDialog } from './bucket-navigator/delete-confirmation
 import { DropZone } from './bucket-navigator/drop-zone'
 import { FileActionButtons } from './bucket-navigator/file-action-buttons'
 import { R2FileTable } from './bucket-navigator/file-table'
+import { GalleryView } from './bucket-navigator/gallery-view'
 import { OverwriteConfirmationDialog } from './bucket-navigator/overwrite-confirmation-dialog'
 import { RenameDialog } from './bucket-navigator/rename-dialog'
 import { R2SelectionInfo } from './bucket-navigator/selection-info'
 import { ShareDialog } from './bucket-navigator/share-dialog'
+import { ViewToggle } from './bucket-navigator/view-toggle'
 
 export function BucketNavigator() {
   const { bucketName } = useBucketInfo()
@@ -34,6 +37,7 @@ export function BucketNavigator() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const hasHandledPreviewRef = useRef(false)
+  const { viewMode, setViewMode, isMobile, effectiveViewMode } = useViewPreference()
 
   // Handle preview query parameter (from file share links)
   const previewKey = searchParams.get('preview')
@@ -107,35 +111,53 @@ export function BucketNavigator() {
                 path={fileExplorer.path}
                 onClick={fileExplorer.setPath}
               />
-              <CopyLinkButton path={fileExplorer.path} />
+              <div className="flex items-center gap-2">
+                {!isMobile && <ViewToggle viewMode={viewMode} onToggle={setViewMode} />}
+                <CopyLinkButton path={fileExplorer.path} />
+              </div>
             </div>
           </nav>
         </div>
 
-        {/* File Table */}
+        {/* File Table / Gallery */}
         <DropZone
           onFileDrop={ops.upload.uploadFiles}
           className="border border-border rounded-lg bg-card overflow-hidden"
           disabled={!canWriteInside(currentPathKey)}
         >
-          <R2FileTable
-            items={fileExplorer.sortedItems}
-            selectedItems={fileExplorer.selectedItemKeys}
-            onItemSelect={fileExplorer.onItemSelect}
-            onSelectAll={fileExplorer.onSelectAll}
-            onFolderClick={fileExplorer.setPath}
-            onDeleteItem={ops.delete.onDeleteItem}
-            onRenameItem={ops.rename.onRenameItem}
-            onDownloadItems={ops.download.downloadItems}
-            onShareItem={handleShareItem}
-            onPreviewItem={viewer.openViewer}
-            tableSort={{
-              sortKey: fileExplorer.sortKey,
-              sortDirection: fileExplorer.sortDirection,
-              onSort: fileExplorer.onSort,
-            }}
-            isLoading={fileExplorer.isLoading}
-          />
+          {effectiveViewMode === 'table' ? (
+            <R2FileTable
+              items={fileExplorer.sortedItems}
+              selectedItems={fileExplorer.selectedItemKeys}
+              onItemSelect={fileExplorer.onItemSelect}
+              onSelectAll={fileExplorer.onSelectAll}
+              onFolderClick={fileExplorer.setPath}
+              onDeleteItem={ops.delete.onDeleteItem}
+              onRenameItem={ops.rename.onRenameItem}
+              onDownloadItems={ops.download.downloadItems}
+              onShareItem={handleShareItem}
+              onPreviewItem={viewer.openViewer}
+              tableSort={{
+                sortKey: fileExplorer.sortKey,
+                sortDirection: fileExplorer.sortDirection,
+                onSort: fileExplorer.onSort,
+              }}
+              isLoading={fileExplorer.isLoading}
+            />
+          ) : (
+            <GalleryView
+              items={fileExplorer.sortedItems}
+              selectedItems={fileExplorer.selectedItemKeys}
+              onItemSelect={fileExplorer.onItemSelect}
+              onFolderClick={fileExplorer.setPath}
+              onDeleteItem={ops.delete.onDeleteItem}
+              onRenameItem={ops.rename.onRenameItem}
+              onDownloadItems={ops.download.downloadItems}
+              onShareItem={handleShareItem}
+              onPreviewItem={viewer.openViewer}
+              isLoading={fileExplorer.isLoading}
+            />
+          )}
         </DropZone>
 
         {/* File Action Btns */}

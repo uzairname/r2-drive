@@ -40,6 +40,16 @@ export const renameObject = publicProcedure
         throw new Error('Original object not found')
       }
 
+      // In development mode, the R2 binding uses local emulation but the S3 API
+      // would hit the production bucket. Block this to prevent confusion.
+      if (env.NODE_ENV === 'development') {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message:
+            'Rename is not supported in development mode. The R2 binding uses local emulation, but the S3 copy API requires production credentials. Run with --remote or test in production.',
+        })
+      }
+
       // Use R2's S3-compatible copy operation via HTTP API
       // This performs a server-side copy without loading data into Worker memory
       // Works efficiently even for multi-GB files
@@ -54,10 +64,18 @@ export const renameObject = publicProcedure
       const copyUrl = `${baseUrl}/${env.R2_BUCKET_NAME}/${newKey}`
 
       // The x-amz-copy-source header tells R2 to copy from the source object
+      // The source path must be URL-encoded for the S3 API
+      const encodedSourceKey = oldPath.key
+        .split('/')
+        .map((segment) => encodeURIComponent(segment))
+        .join('/')
+
+      const copySource = `/${env.R2_BUCKET_NAME}/${encodedSourceKey}`
+
       const copyRequest = await r2.sign(copyUrl, {
         method: 'PUT',
         headers: {
-          'x-amz-copy-source': `/${env.R2_BUCKET_NAME}/${oldPath.key}`,
+          'x-amz-copy-source': copySource,
           'x-amz-metadata-directive': 'COPY', // Preserve metadata
         },
       })

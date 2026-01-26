@@ -11,14 +11,15 @@
     "nodejs_compat",
 		"global_fetch_strictly_public"
 	],
-  "workers_dev": false,
-	"route": { "pattern": "files.uzair.me", "custom_domain": true },
 	"assets": {
 		"binding": "ASSETS",
 		"directory": ".open-next/assets"
 	},
 	"observability": {
-		"enabled": true
+		"enabled": true,
+    "traces": {
+      "enabled": true
+    }
 	},
 	"r2_buckets": [
 		{
@@ -33,8 +34,28 @@
 	"vars": {
     "R2_BUCKET_NAME": "files",
 		"ENABLE_AUTH": "true",
-		"ALLOWED_ORIGINS": "*",
-    "NEXTAUTH_URL": "https://files.uzair.me",
-    "NODE_ENV": "production"
+		"ALLOWED_ORIGINS": "*"
 	},
+	"env": {
+		"dev": {
+			"vars": {
+				"R2_BUCKET_NAME": "files",
+				"ENABLE_AUTH": "true",
+				"ALLOWED_ORIGINS": "*",
+				"NEXTAUTH_URL": "http://localhost:3000",
+				"NODE_ENV": "development"
+			}
+		},
+		"production": {
+			"workers_dev": false,
+			"route": { "pattern": "files.uzair.me", "custom_domain": true },
+			"vars": {
+				"R2_BUCKET_NAME": "files",
+				"ENABLE_AUTH": "true",
+				"ALLOWED_ORIGINS": "*",
+				"NEXTAUTH_URL": "https://files.uzair.me",
+				"NODE_ENV": "production"
+			}
+		}
+	}
 }
