@@ -1,3 +1,4 @@
+import { createDb, eq, shareTokens } from '@r2-drive/db'
 import { PathSchema } from '@r2-drive/utils'
 import { TRPCError } from '@trpc/server'
 import { AwsClient } from 'aws4fetch'
@@ -94,5 +95,14 @@ export const renameObject = publicProcedure
 
       // Delete the original object
       await env.FILES.delete(oldPath.key)
+
+      // Update share tokens that reference this file
+      if (env.DATABASE_URL) {
+        const db = createDb(env.DATABASE_URL)
+        await db
+          .update(shareTokens)
+          .set({ pathPrefix: newKey })
+          .where(eq(shareTokens.pathPrefix, oldPath.key))
+      }
     }
   )

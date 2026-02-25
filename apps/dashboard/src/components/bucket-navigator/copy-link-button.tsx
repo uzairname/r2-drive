@@ -31,9 +31,9 @@ export function CopyLinkButton({ path }: CopyLinkButtonProps) {
   return (
     <Button
       variant="ghost"
-      size="sm"
+      size="icon"
       onClick={handleCopyLink}
-      className="h-8 px-2 ml-4 flex-shrink-0"
+      className="h-8 w-8 flex-shrink-0"
       title="Copy shareable link to current folder"
     >
       {copied ? <Check className="h-4 w-4 text-green-600" /> : <Link className="h-4 w-4" />}

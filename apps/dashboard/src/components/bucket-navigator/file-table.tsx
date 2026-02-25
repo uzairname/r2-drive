@@ -75,12 +75,12 @@ export function R2FileTable({
     (item: UIR2Item) => {
       if (item.path.isFolder) {
         onFolderClick(item.path)
-      } else if (isTouchDevice && onPreviewItem) {
-        // On touch devices, single tap opens preview for files
+      } else if (onPreviewItem) {
+        // Single click opens preview for files
         onPreviewItem(item)
       }
     },
-    [isTouchDevice, onFolderClick, onPreviewItem]
+    [onFolderClick, onPreviewItem]
   )
 
   const renderSortIcon = (key: 'name' | 'size' | 'lastModified') => {
@@ -196,7 +196,7 @@ export function R2FileTable({
                   key={item.path.key}
                   className="border-b border-border hover:bg-muted/50 cursor-pointer group"
                   onClick={() => handleRowClick(item)}
-                  onDoubleClick={() => !isTouchDevice && !item.path.isFolder && onPreviewItem?.(item)}
+                  onDoubleClick={() => !item.path.isFolder && onPreviewItem?.(item)}
                 >
                   <TableCell
                     className="cursor-pointer"

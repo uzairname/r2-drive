@@ -200,21 +200,21 @@ export function GalleryView({
     (item: UIR2Item) => {
       if (item.path.isFolder) {
         onFolderClick(item.path)
-      } else if (isTouchDevice && onPreviewItem) {
-        // On touch devices, single tap opens preview for files
+      } else if (onPreviewItem) {
+        // Single click opens preview for files
         onPreviewItem(item)
       }
     },
-    [isTouchDevice, onFolderClick, onPreviewItem]
+    [onFolderClick, onPreviewItem]
   )
 
   const handleTileDoubleClick = useCallback(
     (item: UIR2Item) => {
-      if (!isTouchDevice && !item.path.isFolder && onPreviewItem) {
+      if (!item.path.isFolder && onPreviewItem) {
         onPreviewItem(item)
       }
     },
-    [isTouchDevice, onPreviewItem]
+    [onPreviewItem]
   )
 
   return (

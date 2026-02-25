@@ -13,4 +13,4 @@ export type Database = ReturnType<typeof createDb>
 export * from './schema'
 
 // Re-export commonly used drizzle operators
-export { and, desc, eq, gt, isNull, or, sql } from 'drizzle-orm'
+export { and, desc, eq, gt, isNull, like, or, sql } from 'drizzle-orm'

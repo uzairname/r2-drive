@@ -11,6 +11,8 @@ import { useFileExplorer } from '@/hooks/use-file-explorer'
 import { useViewPreference } from '@/hooks/use-view-preference'
 import { Paths } from '@/lib/path'
 import { Path } from '@/lib/path'
+import { Input } from '@r2-drive/ui/components/input'
+import { Search, X } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { R2Breadcrumbs } from './bucket-navigator/breadcrumbs'
@@ -43,6 +45,11 @@ export function BucketNavigator() {
   const [showShareDialog, setShowShareDialog] = useState(false)
   const [itemToShare, setItemToShare] = useState<Path | null>(null)
 
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
   // Gallery sort state (independent of table sort)
   const [gallerySortKey, setGallerySortKey] = useState<'name' | 'size' | 'lastModified'>('name')
   const [gallerySortDirection, setGallerySortDirection] = useState<'asc' | 'desc'>('asc')
@@ -51,10 +58,45 @@ export function BucketNavigator() {
     setGallerySortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))
   }, [])
 
-  const gallerySortedItems = useMemo(() => {
-    if (effectiveViewMode !== 'gallery') return fileExplorer.sortedItems
+  // Clear search when navigating to a different folder
+  const previousPathRef = useRef(fileExplorer.path.key)
+  useEffect(() => {
+    if (previousPathRef.current !== fileExplorer.path.key) {
+      setSearchQuery('')
+      setIsSearchOpen(false)
+      previousPathRef.current = fileExplorer.path.key
+    }
+  }, [fileExplorer.path.key])
 
-    const sorted = [...fileExplorer.items].sort((a, b) => {
+  // Focus input when search opens
+  useEffect(() => {
+    if (isSearchOpen && searchInputRef.current) {
+      searchInputRef.current.focus()
+    }
+  }, [isSearchOpen])
+
+  const handleSearchToggle = useCallback(() => {
+    if (isSearchOpen) {
+      setSearchQuery('')
+      setIsSearchOpen(false)
+    } else {
+      setIsSearchOpen(true)
+    }
+  }, [isSearchOpen])
+
+  // Filter items based on search query
+  const filteredItems = useMemo(() => {
+    if (!searchQuery.trim()) return fileExplorer.sortedItems
+    const query = searchQuery.toLowerCase()
+    return fileExplorer.sortedItems.filter((item) =>
+      item.path.name.toLowerCase().includes(query)
+    )
+  }, [fileExplorer.sortedItems, searchQuery])
+
+  const gallerySortedItems = useMemo(() => {
+    if (effectiveViewMode !== 'gallery') return filteredItems
+
+    const sorted = [...filteredItems].sort((a, b) => {
       // Folders always come first
       if (a.path.isFolder && !b.path.isFolder) return -1
       if (!a.path.isFolder && b.path.isFolder) return 1
@@ -75,7 +117,7 @@ export function BucketNavigator() {
       return gallerySortDirection === 'asc' ? comparison : -comparison
     })
     return sorted
-  }, [fileExplorer.items, gallerySortKey, gallerySortDirection, effectiveViewMode, fileExplorer.sortedItems])
+  }, [filteredItems, gallerySortKey, gallerySortDirection, effectiveViewMode])
 
   // Use gallery sorted items when in gallery view for consistent next/previous navigation
   const viewerItems = effectiveViewMode === 'gallery' ? gallerySortedItems : fileExplorer.sortedItems
@@ -140,7 +182,7 @@ export function BucketNavigator() {
     <>
       {/* Main Content */}
       <div className="flex-1 p-4">
-        {/* Breadcrumbs & Copy Link */}
+        {/* Breadcrumbs & Controls */}
         <div className="mb-4">
           <nav className="overflow-hidden">
             <div className="flex items-center justify-between">
@@ -149,7 +191,14 @@ export function BucketNavigator() {
                 path={fileExplorer.path}
                 onClick={fileExplorer.setPath}
               />
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={handleSearchToggle}
+                  className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
+                  aria-label={isSearchOpen ? 'Close search' : 'Open search'}
+                >
+                  <Search className="h-4 w-4" />
+                </button>
                 {effectiveViewMode === 'gallery' && (
                   <GallerySortControls
                     sortKey={gallerySortKey}
@@ -162,6 +211,36 @@ export function BucketNavigator() {
                 <CopyLinkButton path={fileExplorer.path} />
               </div>
             </div>
+            {/* Search Bar */}
+            {isSearchOpen && (
+              <div className="mt-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    ref={searchInputRef}
+                    type="text"
+                    placeholder="Search files and folders..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 pr-9 border-0 bg-transparent shadow-none focus-visible:ring-0"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        setSearchQuery('')
+                        setIsSearchOpen(false)
+                      }
+                    }}
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </nav>
         </div>
 
@@ -173,7 +252,7 @@ export function BucketNavigator() {
         >
           {effectiveViewMode === 'table' ? (
             <R2FileTable
-              items={fileExplorer.sortedItems}
+              items={filteredItems}
               selectedItems={fileExplorer.selectedItemKeys}
               onItemSelect={fileExplorer.onItemSelect}
               onSelectAll={fileExplorer.onSelectAll}

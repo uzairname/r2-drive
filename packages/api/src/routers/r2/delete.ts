@@ -1,3 +1,4 @@
+import { createDb, eq, like, or, shareTokens } from '@r2-drive/db'
 import { PathSchema } from '@r2-drive/utils'
 import { safeAsync } from '@r2-drive/utils/result'
 import { TRPCError } from '@trpc/server'
@@ -35,5 +36,23 @@ export const deleteObjects = publicProcedure
       ).flat()
 
       await ctx.env.FILES.delete(keysToDelete)
+
+      // Delete share tokens that reference deleted files/folders
+      if (ctx.env.DATABASE_URL) {
+        const db = createDb(ctx.env.DATABASE_URL)
+
+        // Build conditions for share token deletion
+        // For files: exact match on pathPrefix
+        // For folders: match pathPrefix equal to folder OR starting with folder (contents)
+        const conditions = input.map((item) =>
+          item.isFolder
+            ? or(eq(shareTokens.pathPrefix, item.key), like(shareTokens.pathPrefix, `${item.key}%`))
+            : eq(shareTokens.pathPrefix, item.key)
+        )
+
+        if (conditions.length > 0) {
+          await db.delete(shareTokens).where(or(...conditions))
+        }
+      }
     })
   )

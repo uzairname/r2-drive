@@ -38,8 +38,8 @@ export function useViewPreference() {
     localStorage.setItem(STORAGE_KEY, mode)
   }
 
-  // On mobile, always use gallery view
-  const effectiveViewMode: ViewMode = isMobile ? 'gallery' : viewMode
+  // Respect user's view mode preference regardless of screen size
+  const effectiveViewMode: ViewMode = viewMode
 
   return {
     viewMode,
