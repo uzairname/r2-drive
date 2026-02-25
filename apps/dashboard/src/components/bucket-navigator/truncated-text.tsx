@@ -13,6 +13,7 @@ interface TruncatedTextProps {
 }
 
 function truncateMiddle(text: string, maxChars: number): string {
+  if (maxChars >= text.length) return text
   if (maxChars <= 3) return '...'
   const ellipsis = '...'
   const availableLength = maxChars - ellipsis.length
@@ -23,22 +24,13 @@ function truncateMiddle(text: string, maxChars: number): string {
 
 /**
  * Truncates text in the middle to fit exactly within its container.
- * Uses binary search with actual DOM measurements for pixel-perfect fitting.
+ * Uses CSS text-overflow as fallback, with JS-based middle truncation when possible.
  */
 export function TruncatedText({ children, className }: TruncatedTextProps) {
   const containerRef = useRef<HTMLSpanElement>(null)
   const measureRef = useRef<HTMLSpanElement>(null)
   const [displayText, setDisplayText] = useState(children)
   const [isTruncated, setIsTruncated] = useState(false)
-  // Use a ref to always access the latest children value in the resize callback
-  const childrenRef = useRef(children)
-  childrenRef.current = children
-
-  useLayoutEffect(() => {
-    // Reset when children change
-    setDisplayText(children)
-    setIsTruncated(false)
-  }, [children])
 
   useLayoutEffect(() => {
     const container = containerRef.current
@@ -46,9 +38,16 @@ export function TruncatedText({ children, className }: TruncatedTextProps) {
     if (!container || !measureSpan) return
 
     const calculateTruncation = () => {
-      const text = childrenRef.current
+      const text = children
       const availableWidth = container.clientWidth
-      if (availableWidth === 0) return
+
+      // Skip calculation if container has no width yet - keep showing full text
+      // CSS text-overflow: ellipsis will handle it as fallback
+      if (availableWidth < 20) {
+        setDisplayText(text)
+        setIsTruncated(false)
+        return
+      }
 
       // Measure full text width
       measureSpan.textContent = text
@@ -62,9 +61,9 @@ export function TruncatedText({ children, className }: TruncatedTextProps) {
       }
 
       // Binary search to find the maximum number of characters that fit
-      let low = 3 // Minimum: "..."
+      let low = 4 // Minimum meaningful truncation: "a..."
       let high = text.length - 1
-      let bestFit = low
+      let bestFit = text.length // Default to full text
 
       while (low <= high) {
         const mid = Math.floor((low + high) / 2)
@@ -80,19 +79,25 @@ export function TruncatedText({ children, className }: TruncatedTextProps) {
         }
       }
 
-      setDisplayText(truncateMiddle(text, bestFit))
-      setIsTruncated(true)
+      const truncated = truncateMiddle(text, bestFit)
+      setDisplayText(truncated)
+      setIsTruncated(truncated !== text)
     }
 
-    // Initial calculation
-    calculateTruncation()
+    // Use requestAnimationFrame to ensure layout is complete
+    const rafId = requestAnimationFrame(() => {
+      calculateTruncation()
+    })
 
     const resizeObserver = new ResizeObserver(() => {
       calculateTruncation()
     })
 
     resizeObserver.observe(container)
-    return () => resizeObserver.disconnect()
+    return () => {
+      cancelAnimationFrame(rafId)
+      resizeObserver.disconnect()
+    }
   }, [children])
 
   return (
@@ -101,7 +106,14 @@ export function TruncatedText({ children, className }: TruncatedTextProps) {
         <span
           ref={containerRef}
           className={className}
-          style={{ display: 'block', overflow: 'hidden', minWidth: 0 }}
+          style={{
+            display: 'block',
+            position: 'relative',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            minWidth: 0,
+          }}
         >
           {displayText}
           {/* Hidden span for measuring text width */}
@@ -113,6 +125,7 @@ export function TruncatedText({ children, className }: TruncatedTextProps) {
               visibility: 'hidden',
               whiteSpace: 'nowrap',
               pointerEvents: 'none',
+              font: 'inherit',
             }}
           />
         </span>
