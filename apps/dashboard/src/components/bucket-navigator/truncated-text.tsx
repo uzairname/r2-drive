@@ -5,11 +5,20 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@r2-drive/ui/components/tooltip'
-import { useCallback, useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 
 interface TruncatedTextProps {
   children: string
   className?: string
+}
+
+function truncateMiddle(text: string, maxChars: number): string {
+  if (maxChars <= 3) return '...'
+  const ellipsis = '...'
+  const availableLength = maxChars - ellipsis.length
+  const startLength = Math.ceil(availableLength * 0.6)
+  const endLength = Math.floor(availableLength * 0.4)
+  return text.slice(0, startLength) + ellipsis + text.slice(-endLength)
 }
 
 /**
@@ -21,68 +30,62 @@ export function TruncatedText({ children, className }: TruncatedTextProps) {
   const measureRef = useRef<HTMLSpanElement>(null)
   const [displayText, setDisplayText] = useState(children)
   const [isTruncated, setIsTruncated] = useState(false)
-
-  const truncateMiddle = useCallback(
-    (text: string, maxChars: number): string => {
-      if (maxChars <= 3) return '...'
-      const ellipsis = '...'
-      const availableLength = maxChars - ellipsis.length
-      const startLength = Math.ceil(availableLength * 0.6)
-      const endLength = Math.floor(availableLength * 0.4)
-      return text.slice(0, startLength) + ellipsis + text.slice(-endLength)
-    },
-    []
-  )
-
-  const measureText = useCallback((text: string): number => {
-    if (!measureRef.current) return 0
-    measureRef.current.textContent = text
-    return measureRef.current.getBoundingClientRect().width
-  }, [])
-
-  const calculateTruncation = useCallback(() => {
-    const container = containerRef.current
-    if (!container) return
-
-    const availableWidth = container.clientWidth
-    if (availableWidth === 0) return
-
-    const fullWidth = measureText(children)
-
-    // If full text fits, no truncation needed
-    if (fullWidth <= availableWidth) {
-      setDisplayText(children)
-      setIsTruncated(false)
-      return
-    }
-
-    // Binary search to find the maximum number of characters that fit
-    let low = 3 // Minimum: "..."
-    let high = children.length - 1
-    let bestFit = low
-
-    while (low <= high) {
-      const mid = Math.floor((low + high) / 2)
-      const truncated = truncateMiddle(children, mid)
-      const width = measureText(truncated)
-
-      if (width <= availableWidth) {
-        bestFit = mid
-        low = mid + 1
-      } else {
-        high = mid - 1
-      }
-    }
-
-    setDisplayText(truncateMiddle(children, bestFit))
-    setIsTruncated(true)
-  }, [children, measureText, truncateMiddle])
+  // Use a ref to always access the latest children value in the resize callback
+  const childrenRef = useRef(children)
+  childrenRef.current = children
 
   useLayoutEffect(() => {
-    calculateTruncation()
+    // Reset when children change
+    setDisplayText(children)
+    setIsTruncated(false)
+  }, [children])
 
+  useLayoutEffect(() => {
     const container = containerRef.current
-    if (!container) return
+    const measureSpan = measureRef.current
+    if (!container || !measureSpan) return
+
+    const calculateTruncation = () => {
+      const text = childrenRef.current
+      const availableWidth = container.clientWidth
+      if (availableWidth === 0) return
+
+      // Measure full text width
+      measureSpan.textContent = text
+      const fullWidth = measureSpan.getBoundingClientRect().width
+
+      // If full text fits, no truncation needed
+      if (fullWidth <= availableWidth) {
+        setDisplayText(text)
+        setIsTruncated(false)
+        return
+      }
+
+      // Binary search to find the maximum number of characters that fit
+      let low = 3 // Minimum: "..."
+      let high = text.length - 1
+      let bestFit = low
+
+      while (low <= high) {
+        const mid = Math.floor((low + high) / 2)
+        const truncated = truncateMiddle(text, mid)
+        measureSpan.textContent = truncated
+        const width = measureSpan.getBoundingClientRect().width
+
+        if (width <= availableWidth) {
+          bestFit = mid
+          low = mid + 1
+        } else {
+          high = mid - 1
+        }
+      }
+
+      setDisplayText(truncateMiddle(text, bestFit))
+      setIsTruncated(true)
+    }
+
+    // Initial calculation
+    calculateTruncation()
 
     const resizeObserver = new ResizeObserver(() => {
       calculateTruncation()
@@ -90,7 +93,7 @@ export function TruncatedText({ children, className }: TruncatedTextProps) {
 
     resizeObserver.observe(container)
     return () => resizeObserver.disconnect()
-  }, [calculateTruncation])
+  }, [children])
 
   return (
     <Tooltip open={isTruncated ? undefined : false}>

@@ -1,10 +1,12 @@
 'use client'
 
+import { useIsMobile } from '@/hooks/use-mobile'
 import { Button } from '@r2-drive/ui/components/button'
 import { UIR2Item } from '@r2-drive/utils/types/item'
-import { TruncatedText } from '../bucket-navigator/truncated-text'
 import { Check, ChevronLeft, ChevronRight, Download, Link, X } from 'lucide-react'
 import { useState } from 'react'
+import { FileInfoDialog } from '../bucket-navigator/file-info-dialog'
+import { TruncatedText } from '../bucket-navigator/truncated-text'
 
 interface FileViewerToolbarProps {
   item: UIR2Item
@@ -14,6 +16,7 @@ interface FileViewerToolbarProps {
   onPrevious: () => void
   onNext: () => void
   onDownload: () => void
+  hidden?: boolean
 }
 
 export function FileViewerToolbar({
@@ -24,9 +27,12 @@ export function FileViewerToolbar({
   onPrevious,
   onNext,
   onDownload,
+  hidden = false,
 }: FileViewerToolbarProps) {
   const hasMultipleItems = totalItems > 1
   const [copied, setCopied] = useState(false)
+  const [showInfoDialog, setShowInfoDialog] = useState(false)
+  const isMobile = useIsMobile()
 
   const handleCopyLink = async () => {
     // Build the file explorer URL with path (parent folder) and preview (file key) params
@@ -44,11 +50,26 @@ export function FileViewerToolbar({
   }
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 bg-black/50 backdrop-blur-sm border-b border-white/10">
-      <div className="flex items-center gap-2 min-w-0 flex-1">
-        <TruncatedText className="text-white font-medium">
-          {item.path.name}
-        </TruncatedText>
+    <div
+      className={`flex items-center justify-between px-4 py-3 bg-black border-b border-white/10 transition-transform duration-200 ${
+        hidden ? '-translate-y-full' : 'translate-y-0'
+      }`}
+    >
+      <div className="flex items-center gap-3 min-w-0 flex-1">
+        {isMobile ? (
+          <button
+            onClick={() => setShowInfoDialog(true)}
+            className="min-w-0 text-left"
+          >
+            <TruncatedText className="text-white font-medium">
+              {item.path.name}
+            </TruncatedText>
+          </button>
+        ) : (
+          <TruncatedText className="text-white font-medium">
+            {item.path.name}
+          </TruncatedText>
+        )}
         {hasMultipleItems && (
           <span className="text-white/60 text-sm flex-shrink-0">
             ({currentIndex + 1} / {totalItems})
@@ -110,6 +131,12 @@ export function FileViewerToolbar({
           <X className="h-5 w-5" />
         </Button>
       </div>
+
+      <FileInfoDialog
+        show={showInfoDialog}
+        onOpenChange={setShowInfoDialog}
+        item={item}
+      />
     </div>
   )
 }

@@ -12,7 +12,7 @@ import { useViewPreference } from '@/hooks/use-view-preference'
 import { Paths } from '@/lib/path'
 import { Path } from '@/lib/path'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { R2Breadcrumbs } from './bucket-navigator/breadcrumbs'
 import { CompressionDialog } from './bucket-navigator/compression-dialog'
 import { CopyLinkButton } from './bucket-navigator/copy-link-button'
@@ -21,6 +21,7 @@ import { DeleteConfirmationDialog } from './bucket-navigator/delete-confirmation
 import { DropZone } from './bucket-navigator/drop-zone'
 import { FileActionButtons } from './bucket-navigator/file-action-buttons'
 import { R2FileTable } from './bucket-navigator/file-table'
+import { GallerySortControls } from './bucket-navigator/gallery-sort-controls'
 import { GalleryView } from './bucket-navigator/gallery-view'
 import { OverwriteConfirmationDialog } from './bucket-navigator/overwrite-confirmation-dialog'
 import { RenameDialog } from './bucket-navigator/rename-dialog'
@@ -33,11 +34,52 @@ export function BucketNavigator() {
   const fileExplorer = useFileExplorer()
   const dialogs = useDialogs()
   const { canWriteInside } = usePermissions()
-  const viewer = useFileViewer(fileExplorer.sortedItems)
   const searchParams = useSearchParams()
   const router = useRouter()
   const hasHandledPreviewRef = useRef(false)
   const { viewMode, setViewMode, isMobile, effectiveViewMode } = useViewPreference()
+
+  // Share dialog state
+  const [showShareDialog, setShowShareDialog] = useState(false)
+  const [itemToShare, setItemToShare] = useState<Path | null>(null)
+
+  // Gallery sort state (independent of table sort)
+  const [gallerySortKey, setGallerySortKey] = useState<'name' | 'size' | 'lastModified'>('name')
+  const [gallerySortDirection, setGallerySortDirection] = useState<'asc' | 'desc'>('asc')
+
+  const toggleGallerySortDirection = useCallback(() => {
+    setGallerySortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+  }, [])
+
+  const gallerySortedItems = useMemo(() => {
+    if (effectiveViewMode !== 'gallery') return fileExplorer.sortedItems
+
+    const sorted = [...fileExplorer.items].sort((a, b) => {
+      // Folders always come first
+      if (a.path.isFolder && !b.path.isFolder) return -1
+      if (!a.path.isFolder && b.path.isFolder) return 1
+
+      let comparison = 0
+      switch (gallerySortKey) {
+        case 'name':
+          comparison = a.path.name.localeCompare(b.path.name)
+          break
+        case 'size':
+          comparison = (a.size ?? 0) - (b.size ?? 0)
+          break
+        case 'lastModified':
+          comparison =
+            (a.lastModified?.getTime() ?? 0) - (b.lastModified?.getTime() ?? 0)
+          break
+      }
+      return gallerySortDirection === 'asc' ? comparison : -comparison
+    })
+    return sorted
+  }, [fileExplorer.items, gallerySortKey, gallerySortDirection, effectiveViewMode, fileExplorer.sortedItems])
+
+  // Use gallery sorted items when in gallery view for consistent next/previous navigation
+  const viewerItems = effectiveViewMode === 'gallery' ? gallerySortedItems : fileExplorer.sortedItems
+  const viewer = useFileViewer(viewerItems)
 
   // Handle preview query parameter (from file share links)
   const previewKey = searchParams.get('preview')
@@ -76,10 +118,6 @@ export function BucketNavigator() {
   // Current folder path for permission checks
   const currentPathKey = fileExplorer.path.key
 
-  // Share dialog state
-  const [showShareDialog, setShowShareDialog] = useState(false)
-  const [itemToShare, setItemToShare] = useState<Path | null>(null)
-
   const handleShareItem = (path: Path) => {
     setItemToShare(path)
     setShowShareDialog(true)
@@ -112,6 +150,14 @@ export function BucketNavigator() {
                 onClick={fileExplorer.setPath}
               />
               <div className="flex items-center gap-2">
+                {effectiveViewMode === 'gallery' && (
+                  <GallerySortControls
+                    sortKey={gallerySortKey}
+                    sortDirection={gallerySortDirection}
+                    onSortKeyChange={setGallerySortKey}
+                    onSortDirectionToggle={toggleGallerySortDirection}
+                  />
+                )}
                 {!isMobile && <ViewToggle viewMode={viewMode} onToggle={setViewMode} />}
                 <CopyLinkButton path={fileExplorer.path} />
               </div>
@@ -146,7 +192,7 @@ export function BucketNavigator() {
             />
           ) : (
             <GalleryView
-              items={fileExplorer.sortedItems}
+              items={gallerySortedItems}
               selectedItems={fileExplorer.selectedItemKeys}
               onItemSelect={fileExplorer.onItemSelect}
               onFolderClick={fileExplorer.setPath}

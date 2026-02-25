@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 interface PdfViewerProps {
   url: string
+  onControlsHiddenChange?: (hidden: boolean) => void
 }
 
 // Debounce hook for zoom optimization
@@ -26,7 +27,7 @@ const ESTIMATED_PAGE_HEIGHT = 792 // Standard letter size at 72 DPI
 const ESTIMATED_PAGE_WIDTH = 612
 const PAGE_GAP = 16
 
-export function PdfViewer({ url }: PdfViewerProps) {
+export function PdfViewer({ url, onControlsHiddenChange }: PdfViewerProps) {
   const isMobile = useIsMobile()
   const [pdfComponents, setPdfComponents] = useState<{
     Document: typeof import('react-pdf').Document
@@ -59,6 +60,27 @@ export function PdfViewer({ url }: PdfViewerProps) {
   const pageDimensions = useRef<Map<number, { width: number; height: number }>>(new Map())
   const inputRef = useRef<HTMLInputElement>(null)
   const interactionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastScrollTop = useRef(0)
+  const [controlsHidden, setControlsHidden] = useState(false)
+
+  // Notify parent when controls visibility changes
+  useEffect(() => {
+    onControlsHiddenChange?.(controlsHidden)
+  }, [controlsHidden, onControlsHiddenChange])
+
+  // Mobile pinch-to-zoom state
+  const [mobileScale, setMobileScale] = useState(1)
+  const mobileScaleRef = useRef(1)
+  const pinchRef = useRef({
+    initialDistance: 0,
+    initialScale: 1,
+    isPinching: false,
+  })
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    mobileScaleRef.current = mobileScale
+  }, [mobileScale])
 
   // Debounce scale for smoother zooming - render at full quality after zoom stops
   const debouncedScale = useDebouncedValue(scale, 150)
@@ -194,6 +216,18 @@ export function PdfViewer({ url }: PdfViewerProps) {
         handleInteractionEnd()
       }, 150)
 
+      // Hide/show controls on mobile based on scroll direction
+      if (isMobile) {
+        const currentScrollTop = container.scrollTop
+        const scrollDelta = currentScrollTop - lastScrollTop.current
+
+        // Only trigger if scrolled more than 10px to avoid jitter
+        if (Math.abs(scrollDelta) > 10) {
+          setControlsHidden(scrollDelta > 0 && currentScrollTop > 50)
+          lastScrollTop.current = currentScrollTop
+        }
+      }
+
       const containerRect = container.getBoundingClientRect()
       const containerCenter = containerRect.top + containerRect.height / 2
 
@@ -219,7 +253,7 @@ export function PdfViewer({ url }: PdfViewerProps) {
       container.removeEventListener('scroll', handleScroll)
       if (scrollTimeout) clearTimeout(scrollTimeout)
     }
-  }, [numPages, handleInteractionStart, handleInteractionEnd])
+  }, [numPages, isMobile, handleInteractionStart, handleInteractionEnd])
 
   const jumpToPage = useCallback((pageNum: number) => {
     const pageEl = pageRefs.current.get(pageNum)
@@ -227,6 +261,59 @@ export function PdfViewer({ url }: PdfViewerProps) {
       pageEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
   }, [])
+
+  // Mobile pinch-to-zoom handlers
+  const getDistance = useCallback((touches: TouchList) => {
+    const touch0 = touches[0]
+    const touch1 = touches[1]
+    if (!touch0 || !touch1) return 0
+    const dx = touch0.clientX - touch1.clientX
+    const dy = touch0.clientY - touch1.clientY
+    return Math.sqrt(dx * dx + dy * dy)
+  }, [])
+
+  // Use native event listeners for pinch-to-zoom to properly prevent default browser zoom
+  useEffect(() => {
+    if (!isMobile) return
+    const container = containerRef.current
+    if (!container) return
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault()
+        pinchRef.current = {
+          initialDistance: getDistance(e.touches),
+          initialScale: mobileScaleRef.current,
+          isPinching: true,
+        }
+      }
+    }
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && pinchRef.current.isPinching) {
+        e.preventDefault()
+        const currentDistance = getDistance(e.touches)
+        const scaleFactor = currentDistance / pinchRef.current.initialDistance
+        const newScale = Math.min(Math.max(pinchRef.current.initialScale * scaleFactor, 0.5), 3)
+        setMobileScale(newScale)
+      }
+    }
+
+    const handleTouchEnd = () => {
+      pinchRef.current.isPinching = false
+    }
+
+    // Use { passive: false } to allow preventDefault() to work
+    container.addEventListener('touchstart', handleTouchStart, { passive: false })
+    container.addEventListener('touchmove', handleTouchMove, { passive: false })
+    container.addEventListener('touchend', handleTouchEnd)
+
+    return () => {
+      container.removeEventListener('touchstart', handleTouchStart)
+      container.removeEventListener('touchmove', handleTouchMove)
+      container.removeEventListener('touchend', handleTouchEnd)
+    }
+  }, [isMobile, getDistance])
 
   const handlePageClick = () => {
     if (!numPages) return
@@ -384,27 +471,52 @@ export function PdfViewer({ url }: PdfViewerProps) {
     </Document>
   )
 
-  // Mobile: pinch-to-zoom view with centered content
+  // Mobile: pinch-to-zoom view with auto-hiding controls
   if (isMobile) {
     return (
-      <div className="flex flex-col h-full w-full">
-        {/* Mobile Controls - page indicator only */}
-        <div className="flex-shrink-0 flex items-center justify-center py-2">
-          <div className="flex items-center gap-2 bg-white/10 rounded-lg p-2">
+      <div className="flex flex-col h-full w-full relative">
+        {/* Mobile Controls - page indicator and zoom level, auto-hides on scroll down */}
+        <div
+          className={`absolute top-14 left-0 right-0 z-10 flex items-center justify-center py-2 transition-all duration-200 ${
+            controlsHidden ? '-top-12 opacity-0' : 'top-14 opacity-100'
+          }`}
+        >
+          <div className="flex items-center gap-2 bg-black/60 backdrop-blur-sm rounded-lg p-2">
             {pageIndicator}
+            {mobileScale !== 1 && (
+              <>
+                <div className="w-px h-4 bg-white/20" />
+                <span className="text-white text-sm px-1">{Math.round(mobileScale * 100)}%</span>
+                <button
+                  onClick={() => setMobileScale(1)}
+                  className="text-white/60 text-xs px-1 hover:text-white"
+                >
+                  Reset
+                </button>
+              </>
+            )}
           </div>
         </div>
 
-        {/* PDF Document - pinch-to-zoom enabled, centered */}
+        {/* PDF Document - pinch-to-zoom enabled, scrollable */}
         <div
           ref={containerRef}
           className="flex-1 overflow-auto overscroll-contain"
           style={{
             WebkitOverflowScrolling: 'touch',
             minHeight: 0,
+            touchAction: 'manipulation', // Allow scroll/pan, disable double-tap zoom
           }}
         >
-          <div className="flex flex-col items-center min-h-full p-2 touch-manipulation">
+          <div
+            className={`min-h-full p-2 w-fit mx-auto origin-top transition-[padding] duration-200 ${
+              controlsHidden ? 'pt-2' : 'pt-24'
+            }`}
+            style={{
+              transform: `scale(${mobileScale})`,
+              transformOrigin: 'top center',
+            }}
+          >
             {pdfDocument}
           </div>
         </div>

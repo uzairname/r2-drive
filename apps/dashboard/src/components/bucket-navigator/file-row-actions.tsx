@@ -7,7 +7,7 @@ import {
   DropdownMenuTrigger,
 } from '@r2-drive/ui/components/dropdown-menu'
 import { UIR2Item } from '@r2-drive/utils/types/item'
-import { Download, Link2, MoreVertical, Pencil, Trash2 } from 'lucide-react'
+import { Download, Info, Link2, MoreVertical, Pencil, Trash2 } from 'lucide-react'
 
 export function FileRowActions({
   item,
@@ -18,6 +18,7 @@ export function FileRowActions({
   onShare,
   onRename,
   onDelete,
+  onInfo,
   className,
 }: {
   item: UIR2Item
@@ -28,6 +29,7 @@ export function FileRowActions({
   onShare?: () => void
   onRename: () => void
   onDelete: () => void
+  onInfo?: () => void
   className?: string
 }) {
   return (
@@ -44,6 +46,12 @@ export function FileRowActions({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+        {onInfo && (
+          <DropdownMenuItem onClick={onInfo}>
+            <Info className="h-4 w-4 mr-2" />
+            Info
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem onClick={onDownload}>
           <Download className="h-4 w-4 mr-2" />
           Download

@@ -1,10 +1,11 @@
 'use client'
 
+import { useIsMobile } from '@/hooks/use-mobile'
 import { Path } from '@/lib/path'
 import { Dialog, DialogOverlay, DialogPortal, DialogTitle } from '@r2-drive/ui/components/dialog'
 import { UIR2Item } from '@r2-drive/utils/types/item'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { FileViewerContent } from './file-viewer-content'
 import { FileViewerToolbar } from './file-viewer-toolbar'
 
@@ -30,6 +31,14 @@ export function FileViewerDialog({
   onDownload,
 }: FileViewerDialogProps) {
   const contentRef = useRef<HTMLDivElement>(null)
+  const isMobile = useIsMobile()
+  const [toolbarHidden, setToolbarHidden] = useState(false)
+
+  const handleControlsHiddenChange = useCallback((hidden: boolean) => {
+    if (isMobile) {
+      setToolbarHidden(hidden)
+    }
+  }, [isMobile])
 
   // Keyboard navigation
   useEffect(() => {
@@ -65,19 +74,43 @@ export function FileViewerDialog({
           aria-describedby={undefined}
         >
           <DialogTitle className="sr-only">File Preview: {item.path.name}</DialogTitle>
-          <FileViewerToolbar
-            item={item}
-            currentIndex={currentIndex}
-            totalItems={items.length}
-            onClose={onClose}
-            onPrevious={onPrevious}
-            onNext={onNext}
-            onDownload={() => onDownload(item.path)}
-          />
 
-          <div className="flex-1 flex items-center justify-center overflow-auto p-4 min-h-0">
-            <FileViewerContent item={item} />
-          </div>
+          {isMobile ? (
+            // Mobile: toolbar overlays content, content takes full screen
+            <>
+              <div className="absolute top-0 left-0 right-0 z-10">
+                <FileViewerToolbar
+                  item={item}
+                  currentIndex={currentIndex}
+                  totalItems={items.length}
+                  onClose={onClose}
+                  onPrevious={onPrevious}
+                  onNext={onNext}
+                  onDownload={() => onDownload(item.path)}
+                  hidden={toolbarHidden}
+                />
+              </div>
+              <div className="flex-1 flex items-center justify-center overflow-auto min-h-0">
+                <FileViewerContent item={item} onControlsHiddenChange={handleControlsHiddenChange} />
+              </div>
+            </>
+          ) : (
+            // Desktop: toolbar takes space, content below
+            <>
+              <FileViewerToolbar
+                item={item}
+                currentIndex={currentIndex}
+                totalItems={items.length}
+                onClose={onClose}
+                onPrevious={onPrevious}
+                onNext={onNext}
+                onDownload={() => onDownload(item.path)}
+              />
+              <div className="flex-1 flex items-center justify-center overflow-auto p-4 min-h-0">
+                <FileViewerContent item={item} />
+              </div>
+            </>
+          )}
         </DialogPrimitive.Content>
       </DialogPortal>
     </Dialog>

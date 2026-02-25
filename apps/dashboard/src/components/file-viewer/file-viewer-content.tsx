@@ -12,9 +12,10 @@ import { VideoViewer } from './viewers/video-viewer'
 
 interface FileViewerContentProps {
   item: UIR2Item
+  onControlsHiddenChange?: (hidden: boolean) => void
 }
 
-export function FileViewerContent({ item }: FileViewerContentProps) {
+export function FileViewerContent({ item, onControlsHiddenChange }: FileViewerContentProps) {
   // Use local API route to avoid CORS issues with presigned URLs
   const url = `/api/preview?key=${encodeURIComponent(item.path.key)}`
 
@@ -32,6 +33,7 @@ export function FileViewerContent({ item }: FileViewerContentProps) {
       url={url}
       contentType={contentType}
       item={item}
+      onControlsHiddenChange={onControlsHiddenChange}
     />
   )
 }
@@ -41,9 +43,10 @@ interface ViewerByTypeProps {
   url: string
   contentType?: string
   item: UIR2Item
+  onControlsHiddenChange?: (hidden: boolean) => void
 }
 
-function ViewerByType({ type, url, contentType, item }: ViewerByTypeProps) {
+function ViewerByType({ type, url, contentType, item, onControlsHiddenChange }: ViewerByTypeProps) {
   switch (type) {
     case 'image':
       return <ImageViewer url={url} alt={item.path.name} />
@@ -52,7 +55,7 @@ function ViewerByType({ type, url, contentType, item }: ViewerByTypeProps) {
     case 'audio':
       return <AudioViewer url={url} type={contentType} name={item.path.name} />
     case 'pdf':
-      return <PdfViewer url={url} />
+      return <PdfViewer url={url} onControlsHiddenChange={onControlsHiddenChange} />
     case 'text':
       return <TextViewer url={url} filename={item.path.name} />
     case 'spreadsheet':

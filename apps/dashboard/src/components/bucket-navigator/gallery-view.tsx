@@ -7,7 +7,8 @@ import { Skeleton } from '@r2-drive/ui/components/skeleton'
 import { getMimeType } from '@r2-drive/utils/file-utils'
 import { UIR2Item } from '@r2-drive/utils/types/item'
 import { FolderOpen } from 'lucide-react'
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
+import { FileInfoDialog } from './file-info-dialog'
 import { FileRowActions } from './file-row-actions'
 import { useIsTouchDevice } from './file-table'
 import { ItemIcon } from './item-icon'
@@ -47,6 +48,7 @@ function GalleryTile({
   onShare,
   onRename,
   onDelete,
+  onInfo,
 }: {
   item: UIR2Item
   isSelected: boolean
@@ -61,6 +63,7 @@ function GalleryTile({
   onShare?: () => void
   onRename: () => void
   onDelete: () => void
+  onInfo: () => void
 }) {
   const longPressHandlers = useLongPress({
     onLongPress: () => {
@@ -71,7 +74,7 @@ function GalleryTile({
 
   return (
     <div
-      className={`group relative flex flex-col items-center p-3 rounded-lg border cursor-pointer transition-colors ${
+      className={`group relative flex flex-col items-center p-3 rounded-lg border cursor-pointer transition-colors min-w-0 ${
         isSelected
           ? 'bg-primary/10 border-primary'
           : 'bg-card border-border hover:bg-muted/50'
@@ -120,6 +123,7 @@ function GalleryTile({
           onShare={onShare}
           onRename={onRename}
           onDelete={onDelete}
+          onInfo={onInfo}
         />
       </div>
 
@@ -190,6 +194,7 @@ export function GalleryView({
   const { isAdmin } = useIsAdmin()
   const isTouchDevice = useIsTouchDevice()
   const isSelectionMode = selectedItems.length > 0
+  const [infoItem, setInfoItem] = useState<UIR2Item | null>(null)
 
   const handleTileClick = useCallback(
     (item: UIR2Item) => {
@@ -213,37 +218,46 @@ export function GalleryView({
   )
 
   return (
-    <div className="border border-border rounded-md overflow-hidden">
-      <div className="max-h-[70vh] overflow-auto overscroll-contain">
-        <div className="p-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            {isLoading ? (
-              <GalleryLoadingState />
-            ) : items.length === 0 ? (
-              <GalleryEmptyState />
-            ) : (
-              items.map((item) => (
-                <GalleryTile
-                  key={item.path.key}
-                  item={item}
-                  isSelected={selectedItems.includes(item.path.key)}
-                  isSelectionMode={isSelectionMode}
-                  onSelect={(shiftKey) => onItemSelect(item.path.key, shiftKey)}
-                  onClick={() => handleTileClick(item)}
-                  onDoubleClick={() => handleTileDoubleClick(item)}
-                  isTouchDevice={isTouchDevice}
-                  canWrite={canWrite(item.path.key)}
-                  isAdmin={isAdmin}
-                  onDownload={() => onDownloadItems([item.path])}
-                  onShare={onShareItem ? () => onShareItem(item.path) : undefined}
-                  onRename={() => onRenameItem(item.path)}
-                  onDelete={() => onDeleteItem(item.path)}
-                />
-              ))
-            )}
+    <>
+      <div className="border border-border rounded-md overflow-hidden">
+        <div className="max-h-[70vh] overflow-y-auto overflow-x-hidden overscroll-contain">
+          <div className="p-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              {isLoading ? (
+                <GalleryLoadingState />
+              ) : items.length === 0 ? (
+                <GalleryEmptyState />
+              ) : (
+                items.map((item) => (
+                  <GalleryTile
+                    key={item.path.key}
+                    item={item}
+                    isSelected={selectedItems.includes(item.path.key)}
+                    isSelectionMode={isSelectionMode}
+                    onSelect={(shiftKey) => onItemSelect(item.path.key, shiftKey)}
+                    onClick={() => handleTileClick(item)}
+                    onDoubleClick={() => handleTileDoubleClick(item)}
+                    isTouchDevice={isTouchDevice}
+                    canWrite={canWrite(item.path.key)}
+                    isAdmin={isAdmin}
+                    onDownload={() => onDownloadItems([item.path])}
+                    onShare={onShareItem ? () => onShareItem(item.path) : undefined}
+                    onRename={() => onRenameItem(item.path)}
+                    onDelete={() => onDeleteItem(item.path)}
+                    onInfo={() => setInfoItem(item)}
+                  />
+                ))
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      <FileInfoDialog
+        show={!!infoItem}
+        onOpenChange={(open) => !open && setInfoItem(null)}
+        item={infoItem}
+      />
+    </>
   )
 }
